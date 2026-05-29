@@ -1,12 +1,11 @@
-# Ghost Liner ローカル版 — 設計書
+# local_gl ローカル版 — 設計書
 
 - 日付: 2026-05-29
-- 目的: Netlify 上の Ghost Liner (`https://helpful-treacle-6d1065.netlify.app`) を、
-  作者の Firebase に依存せず **このMac上で完全ローカルに稼働**させ、同一LAN内のスマホから複数端末同期で遊べるようにする。公開しない／外部サーバーにただ乗りしない。
+- 目的: 既存の web アプリ（単一 `index.html`）を、外部 Firebase に依存せず **このMac上で完全ローカルに稼働**させ、同一LAN内のスマホから複数端末同期で遊べるようにする。公開しない／外部サーバーにただ乗りしない。
 
 ## 元アプリの構造（調査結果）
 
-- 実体は **単一の `index.html`**（約85KB、HTML/CSS/JS インライン）。Netlify は静的配信のみ。
+- 実体は **単一の `index.html`**（約85KB、HTML/CSS/JS インライン）。配信は静的のみ。
 - 複数端末同期は **Firebase Realtime Database**。全状態を `rooms/{roomId}` の1ツリーに格納。
 - 認証は **匿名認証のみ**。
 - 使用している Firebase API は最小集合のみ:

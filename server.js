@@ -2,7 +2,7 @@
 'use strict';
 
 /*
- * Ghost Liner ローカル同期サーバー
+ * local_gl ローカル同期サーバー
  * 依存ゼロ（Node 標準ライブラリのみ）。Firebase Realtime Database の使用サブセットを再現する。
  *
  *  - 単一のグローバル dataTree を保持し db.json に永続化（200ms デバウンス）。
@@ -281,7 +281,7 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`\n  Ghost Liner local server`);
+  console.log(`\n  local_gl local server`);
   console.log(`  ------------------------`);
   console.log(`  このMac:   http://localhost:${PORT}`);
   // LAN IP を表示

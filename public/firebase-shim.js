@@ -1,5 +1,5 @@
 /*
- * firebase-shim.js — Ghost Liner ローカル版
+ * firebase-shim.js — local_gl ローカル版
  *
  * 元アプリが使う Firebase Realtime Database のサブセットだけを、
  * ローカルサーバー（server.js）への SSE 購読 + HTTP POST に翻訳して再現する。
