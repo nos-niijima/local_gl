@@ -698,6 +698,44 @@
         </div>
     </div>
 
+    <!-- 汎用ダイアログ（ネイティブ alert/confirm の置き換え。タイトルが明確） -->
+    <div id="uiDialog" class="modal" style="z-index:200;">
+        <div class="modal-content" style="max-width:340px;">
+            <p class="modal-title" id="uiDialog_title">確認</p>
+            <div id="uiDialog_msg" style="font-size:13px; line-height:1.6; text-align:left; white-space:pre-wrap; margin-bottom:6px;"></div>
+            <button class="modal-btn" id="uiDialog_ok" onclick="_uiClose(true)">OK</button>
+            <button class="modal-btn cancel" id="uiDialog_cancel" onclick="_uiClose(false)">キャンセル</button>
+        </div>
+    </div>
+
+    <script>
+        // ===== タイトル付き汎用ダイアログ（alert/confirm 代替）=====
+        let _uiResolve = null;
+        function _uiClose(val){
+            document.getElementById('uiDialog').style.display = 'none';
+            const r = _uiResolve; _uiResolve = null;
+            if(r) r(val);
+        }
+        function uiAlert(message, title){
+            return new Promise(resolve => {
+                document.getElementById('uiDialog_title').innerText = title || 'お知らせ';
+                document.getElementById('uiDialog_msg').innerText = message;
+                document.getElementById('uiDialog_cancel').style.display = 'none';
+                _uiResolve = resolve;
+                document.getElementById('uiDialog').style.display = 'flex';
+            });
+        }
+        function uiConfirm(message, title){
+            return new Promise(resolve => {
+                document.getElementById('uiDialog_title').innerText = title || '確認';
+                document.getElementById('uiDialog_msg').innerText = message;
+                document.getElementById('uiDialog_cancel').style.display = 'block';
+                _uiResolve = resolve;
+                document.getElementById('uiDialog').style.display = 'flex';
+            });
+        }
+    </script>
+
     <script>
         // ▼▼ マニュアル（使い方）モーダルを開く関数 ▼▼
         function openManualModal() {
@@ -984,7 +1022,7 @@
                 })
                 .catch((error) => {
                     console.error("Firebaseログインエラー:", error);
-                    alert("データベースへの接続に失敗しました。ページを再読み込みしてください。");
+                    uiAlert("データベースへの接続に失敗しました。ページを再読み込みしてください。", '接続エラー');
                 });
         });
 
@@ -1177,8 +1215,8 @@
             gameRef.update(updates);
         }
 
-        function nextDay() {
-            if(confirm(`Day ${currentDay} を終了し、Day ${currentDay + 1} に進みますか？\n\nこの日のログは残ります。変更したい場合はプルダウンからDayを選択し、該当部分をやり直してください。\n※追放投票に関するデータ（投票数や投票先など）はリセットされます。`)) {
+        async function nextDay() {
+            if(await uiConfirm(`Day ${currentDay} を終了し、Day ${currentDay + 1} に進みますか？\n\nこの日のログは残ります。変更したい場合はプルダウンからDayを選択し、該当部分をやり直してください。\n※追放投票に関するデータ（投票数や投票先など）はリセットされます。`, '次のDayへ進む')) {
                 let nextD = currentDay + 1;
                 gameRef.update({
                     'game/day': nextD,
@@ -1332,7 +1370,7 @@
             document.getElementById('roleModal').style.display = 'flex';
         }
 
-        function distributeRoles() {
+        async function distributeRoles() {
             let s = parseInt(document.getElementById('cfg_sailor').value);
             let p = parseInt(document.getElementById('cfg_pass').value);
             let c = parseInt(document.getElementById('cfg_charon').value);
@@ -1340,11 +1378,11 @@
             let sum = s + p + c + h;
 
             if (sum !== p_players) {
-                alert(`役職の合計人数（${sum}人）が、現在のプレイ人数（${p_players}人）と一致しません。\n内訳を修正してください。`);
+                uiAlert(`役職の合計人数（${sum}人）が、現在のプレイ人数（${p_players}人）と一致しません。\n内訳を修正してください。`, '役職分配');
                 return;
             }
 
-            if(!confirm("役職を新しくシャッフルして全員に分配します。よろしいですか？")) return;
+            if(!(await uiConfirm("役職を新しくシャッフルして全員に分配します。よろしいですか？", '役職分配'))) return;
             
             let roles = [];
             for(let i=0; i<s; i++) roles.push("航海士");
@@ -1466,7 +1504,7 @@
         function submitInput() {
             const myName = document.getElementById('in_name').value;
             if(!myName) {
-                alert("自分の名前を選択してください");
+                uiAlert("自分の名前を選択してください", '入力エラー');
                 return;
             }
 
@@ -1533,7 +1571,7 @@
         function submitAttack() {
             const myName = document.getElementById('atk_name').value;
             if(!myName) {
-                alert("自分の名前を選択してください");
+                uiAlert("自分の名前を選択してください", '入力エラー');
                 return;
             }
 
@@ -1544,7 +1582,7 @@
                 let myInput = gData?.inputs?.[`d${currentDay}`]?.[myName];
                 if (myInput && myInput.type === 'alive') {
                     if (myInput.dest === '操舵' || myInput.dest === '図書') {
-                        alert(`この日の行先に談話室を選んでいたときのみ攻撃可能です。攻撃対象を「誰も攻撃しない」にしてください`);
+                        uiAlert(`この日の行先に談話室を選んでいたときのみ攻撃可能です。攻撃対象を「誰も攻撃しない」にしてください`, '攻撃の確認');
                         return;
                     }
                 }
@@ -1559,7 +1597,7 @@
         function openVoteModal() {
             // 脱落者（亡霊を含む）は投票できない
             if(mySeat && isDeadSeat(mySeat)){
-                alert('脱落者（亡霊を含む）は投票できません。');
+                uiAlert('脱落者（亡霊を含む）は投票できません。', '投票できません');
                 return;
             }
             setPhase(4);
@@ -1590,11 +1628,11 @@
         function submitVote() {
             const myName = document.getElementById('vote_name').value;
             if(!myName) {
-                alert("自分の名前を選択してください");
+                uiAlert("自分の名前を選択してください", '入力エラー');
                 return;
             }
             if(isDeadSeat(myName)){
-                alert('脱落者（亡霊を含む）は投票できません。');
+                uiAlert('脱落者（亡霊を含む）は投票できません。', '投票できません');
                 return;
             }
 
@@ -1602,7 +1640,7 @@
             if (isVoting) {
                 target = document.getElementById('vote_target').value;
                 if (!target) {
-                    alert("追放する相手を選択してください");
+                    uiAlert("追放する相手を選択してください", '投票');
                     return;
                 }
             }
@@ -1955,11 +1993,11 @@
         // 投票結果をダイアログ表示（読み取り専用）
         function showVoteResults(){
             const res = computeExile(currentDay);
-            let msg = `【Day${currentDay} 投票結果】\n${buildVoteTallyText(currentDay)}\n\n`;
+            let msg = `${buildVoteTallyText(currentDay)}\n\n`;
             msg += res.exile
                 ? `→ 最多：${nameOf(res.exile)}（${res.max}票／生存${res.living}人）が追放対象です。`
                 : (res.tie ? '→ 同数のため追放はありません。' : '→ 過半数に達していないため追放はありません。');
-            alert(msg);
+            uiAlert(msg, `Day${currentDay} 投票結果`);
         }
 
         // その日の投票を集計し、追放対象（過半数で単独最多）を求める
@@ -1982,12 +2020,12 @@
             return { exile: null, max, living: living.length, tie: top.length > 1 };
         }
 
-        function applyExile(){
+        async function applyExile(){
             if(!gameRef) return;
             const res = computeExile(currentDay);
-            if(!res.exile){ alert(`【Day${currentDay} 投票結果】\n${buildVoteTallyText(currentDay)}\n\n` + (res.tie ? '→ 同数のため追放はありません。' : '→ 過半数に達していないため追放はありません。')); return; }
-            const msg = `【Day${currentDay} 投票結果】\n${buildVoteTallyText(currentDay)}\n\n→ ${nameOf(res.exile)}（${res.max}票／生存${res.living}人）を追放します。よろしいですか？`;
-            if(!confirm(msg)) return;
+            if(!res.exile){ uiAlert(`${buildVoteTallyText(currentDay)}\n\n` + (res.tie ? '→ 同数のため追放はありません。' : '→ 過半数に達していないため追放はありません。'), `Day${currentDay} 投票結果`); return; }
+            const msg = `${buildVoteTallyText(currentDay)}\n\n→ ${nameOf(res.exile)}（${res.max}票／生存${res.living}人）を追放します。よろしいですか？`;
+            if(!(await uiConfirm(msg, `Day${currentDay} 追放の確認`))) return;
             gameRef.update({ [`dead/${res.exile}`]: true });
         }
 
@@ -2067,9 +2105,9 @@
             else { set('btn_ph1_label', true); set('btn_ph2_label', true); set('btn_ph4_label', true); }            // 観戦
         }
 
-        function resetSingleDay() {
+        async function resetSingleDay() {
             const day = document.getElementById('reset_day_sel').value;
-            if(confirm(`Day ${day} の入力・攻撃・投票の記録を消去しますか？`)) {
+            if(await uiConfirm(`Day ${day} の入力・攻撃・投票の記録を消去しますか？`, 'Dayの記録を消去')) {
                 gameRef.update({
                     [`inputs/d${day}`]: null,
                     [`attacks/d${day}`]: null,
@@ -2094,8 +2132,8 @@
             }
         }
 
-        function resetBoard() { 
-            if(confirm('すべての記録を白紙に戻しますか？\n(各種設定は維持されます)')) {
+        async function resetBoard() {
+            if(await uiConfirm('すべての記録を白紙に戻しますか？\n(各種設定は維持されます)', 'すべての記録を消去')) {
                 gameRef.update({ inputs: null, attacks: null, votes: null, timers: null, timers_stop: null, roles: null, dead: null, 'game/winner': null, 'game/day': 1, 'game/phase': 1 });
             }
         }
