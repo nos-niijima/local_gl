@@ -273,6 +273,44 @@
             .btn-action { font-size: 10.5px !important; min-height: 52px; }
             .modal-content { max-width: 94%; }
         }
+
+        /* ===== 設定・得点の可読性リフレッシュ（モバイル最優先）===== */
+        .dashboard { flex-direction: column; align-items: stretch; gap: 10px; padding: 10px 12px; }
+
+        /* 設定：ラベル付きタイルのグリッド */
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(98px, 1fr)); gap: 8px; }
+        .setting { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--pt-bg); border: 1px solid var(--border); border-radius: 11px; padding: 8px 6px; }
+        .setting-label { font-size: 11px; font-weight: 700; color: var(--text-sub); letter-spacing: .02em; }
+        .stepper { display: flex; align-items: center; gap: 10px; }
+        .stepper button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--btn-border); background: var(--panel-bg); color: var(--text-main); font-size: 18px; font-weight: 700; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+        .stepper button:active { transform: translateY(1px); }
+        .stepper .val { font-size: 18px; font-weight: 800; min-width: 24px; text-align: center; color: var(--text-main); }
+        .setting .toggle { padding: 7px 16px; border-radius: 999px; border: 1px solid var(--btn-border); background: var(--panel-bg); color: var(--text-sub); font-size: 13px; font-weight: 800; cursor: pointer; min-height: 32px; }
+        .setting .toggle.on { background: var(--gold); color: #000; border-color: #d4af37; }
+        .setting .toggle:active { transform: translateY(1px); }
+
+        /* 得点：大きな数値＋プログレスバー */
+        .score-visuals { gap: 10px; }
+        .score-row { display: flex; align-items: center; gap: 11px; }
+        .score-tag { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 900; flex-shrink: 0; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+        .tag-circle { background: var(--color-circle-pt); }
+        .tag-cross  { background: var(--color-cross-pt); }
+        .score-meter { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+        .score-meter-head { display: flex; align-items: baseline; gap: 6px; }
+        .score-cur { font-size: 22px; font-weight: 900; line-height: 1; }
+        .score-sep { color: var(--text-sub); font-weight: 700; font-size: 14px; }
+        .score-meter-head .target-select { margin-left: auto; width: auto; padding: 4px 6px; font-size: 12px; border-radius: 8px; }
+        .gauge-grid { display: block; flex: none; width: 100%; height: 12px; background: var(--pt-bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 999px; transition: width .35s ease; min-width: 0; }
+        .fill-circle { background: var(--color-circle-pt); }
+        .fill-cross  { background: var(--color-cross-pt); }
+
+        /* 役職リファレンス：アクションを超簡潔に */
+        .role-ref-item { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; align-items: baseline; padding: 8px 0; border-bottom: 1px dashed var(--border); }
+        .role-ref-item:last-child { border-bottom: none; }
+        .role-ref-name { font-size: 13px; font-weight: 800; }
+        .role-ref-faction { font-size: 10px; color: var(--text-sub); font-weight: 700; text-align: right; }
+        .role-ref-act { grid-column: 1 / -1; font-size: 11.5px; color: var(--text-main); font-weight: 700; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -307,43 +345,50 @@
 
             <!-- 2. スコア・テーブル設定パネル -->
             <div class="panel dashboard">
-                <div class="size-control">
-                    <span>人数:</span><span id="displayPlayers" style="width:12px; text-align:center;">5</span>
-                    <button class="btn-op" onclick="changePlayers(-1)">-</button><button class="btn-op" onclick="changePlayers(1)">+</button>
-                    <span style="margin-left:4px;">操舵必要:</span><span id="displayNeedBridge" style="width:12px; text-align:center;">2</span>
-                    <button class="btn-op" onclick="changeNeedBridge(-1)">-</button><button class="btn-op" onclick="changeNeedBridge(1)">+</button>
-                    <span style="margin-left:4px;">Day数:</span><span id="displayTurns" style="width:12px; text-align:center;">4</span>
-                    <button class="btn-op" onclick="changeTurns(-1)">-</button><button class="btn-op" onclick="changeTurns(1)">+</button>
-                    <span style="margin-left:4px;">亡霊:</span>
-                    <button class="btn-op" id="ghostToggle" onclick="toggleGhost()" title="脱落者が亡霊になるか" style="min-width:30px;">あり</button>
-                    <span style="margin-left:4px;">図書室:</span>
-                    <button class="btn-op" id="libraryToggle" onclick="toggleLibrary()" title="図書室を使うか" style="min-width:30px;">あり</button>
+                <div class="settings-grid">
+                    <div class="setting">
+                        <span class="setting-label">人数</span>
+                        <div class="stepper"><button onclick="changePlayers(-1)">−</button><span class="val" id="displayPlayers">5</span><button onclick="changePlayers(1)">＋</button></div>
+                    </div>
+                    <div class="setting">
+                        <span class="setting-label">操舵必要</span>
+                        <div class="stepper"><button onclick="changeNeedBridge(-1)">−</button><span class="val" id="displayNeedBridge">2</span><button onclick="changeNeedBridge(1)">＋</button></div>
+                    </div>
+                    <div class="setting">
+                        <span class="setting-label">Day数</span>
+                        <div class="stepper"><button onclick="changeTurns(-1)">−</button><span class="val" id="displayTurns">4</span><button onclick="changeTurns(1)">＋</button></div>
+                    </div>
+                    <div class="setting">
+                        <span class="setting-label">亡霊</span>
+                        <button class="toggle on" id="ghostToggle" onclick="toggleGhost()" title="脱落者が亡霊になるか">あり</button>
+                    </div>
+                    <div class="setting">
+                        <span class="setting-label">図書室</span>
+                        <button class="toggle on" id="libraryToggle" onclick="toggleLibrary()" title="図書室を使うか">あり</button>
+                    </div>
                 </div>
                 <div class="score-visuals">
-                    <div class="score-card">
-                        <span class="score-title color-circle">○pt</span>
-                        <select id="targetCircle" class="target-select" onchange="saveSettings()">
-                            <option value="5">勝利: 5pt</option><option value="6">勝利: 6pt</option><option value="7">勝利: 7pt</option>
-                            <option value="8">勝利: 8pt</option><option value="9">勝利: 9pt</option><option value="10">勝利: 10pt</option>
-                            <option value="11">勝利: 11pt</option><option value="12" selected>勝利: 12pt</option><option value="13">勝利: 13pt</option>
-                            <option value="14">勝利: 14pt</option><option value="15">勝利: 15pt</option><option value="16">勝利: 16pt</option>
-                            <option value="17">勝利: 17pt</option><option value="18">勝利: 18pt</option><option value="19">勝利: 19pt</option>
-                            <option value="20">勝利: 20pt</option><option value="21">勝利: 21pt</option><option value="22">勝利: 22pt</option>
-                            <option value="23">勝利: 23pt</option><option value="24">勝利: 24pt</option><option value="25">勝利: 25pt</option>
-                        </select>
-                        <span class="score-number color-circle" id="txtCircle">0</span>
-                        <div class="gauge-grid" id="gaugeCircle"></div>
+                    <div class="score-row">
+                        <span class="score-tag tag-circle">○</span>
+                        <div class="score-meter">
+                            <div class="score-meter-head">
+                                <span class="score-cur" id="txtCircle" style="color:var(--color-circle-pt)">0</span>
+                                <span class="score-sep">/ 勝利</span>
+                                <select id="targetCircle" class="target-select" onchange="saveSettings()"></select>
+                            </div>
+                            <div class="gauge-grid" id="gaugeCircle"></div>
+                        </div>
                     </div>
-                    <div class="score-card">
-                        <span class="score-title color-cross">✕pt</span>
-                        <select id="targetCross" class="target-select" onchange="saveSettings()">
-                            <option value="1">勝利: 1pt</option><option value="2">勝利: 2pt</option><option value="3">勝利: 3pt</option>
-                            <option value="4">勝利: 4pt</option><option value="5" selected>勝利: 5pt</option><option value="6">勝利: 6pt</option>
-                            <option value="7">勝利: 7pt</option><option value="8">勝利: 8pt</option><option value="9">勝利: 9pt</option>
-                            <option value="10">勝利: 10pt</option>
-                        </select>
-                        <span class="score-number color-cross" id="txtCross">0</span>
-                        <div class="gauge-grid" id="gaugeCross"></div>
+                    <div class="score-row">
+                        <span class="score-tag tag-cross">✕</span>
+                        <div class="score-meter">
+                            <div class="score-meter-head">
+                                <span class="score-cur" id="txtCross" style="color:var(--color-cross-pt)">0</span>
+                                <span class="score-sep">/ 勝利</span>
+                                <select id="targetCross" class="target-select" onchange="saveSettings()"></select>
+                            </div>
+                            <div class="gauge-grid" id="gaugeCross"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -732,13 +777,17 @@
 
         // ===== 役職情報（陣営・説明・制約）=====
         const ROLE_INFO = {
-            '航海士': { faction:'人間', color:'var(--souda)', short:'人間陣営', desc:'人間陣営の要。航海士同士はお互いの正体を知っています。',
+            '航海士': { faction:'人間', color:'var(--souda)', short:'人間陣営', act:'<b>操舵室＋〇</b>のみ（談話・図書に行けない）',
+                desc:'人間陣営の要。航海士同士はお互いの正体を知っています。',
                 rules:['毎ターン必ず「操舵室」へ行き、必ず「〇」を出します（談話室・図書室には行けません）。','カロンに最も狙われる立場。カミングアウトは終盤の切り札に。'] },
-            '乗客': { faction:'人間', color:'var(--tosho)', short:'人間陣営', desc:'特殊能力を持たない多数派の人間。',
+            '乗客': { faction:'人間', color:'var(--tosho)', short:'人間陣営', act:'行先は自由／<b>〇のみ</b>（×不可）',
+                desc:'特殊能力を持たない多数派の人間。',
                 rules:['必ず「〇」を出します（×は出せません）。','行先は自由（操舵室/談話室/図書室）。議論を主導し操舵室の人数を調整しましょう。'] },
-            'ハデス': { faction:'カロン', color:'var(--bourei)', short:'カロン陣営', desc:'冥界の王。人間陣営とカロン陣営の両方を正確に知る唯一の役職。',
+            'ハデス': { faction:'カロン', color:'var(--bourei)', short:'カロン陣営', act:'行先は自由／<b>〇のみ</b>（×・攻撃なし）',
+                desc:'冥界の王。人間陣営とカロン陣営の両方を正確に知る唯一の役職。',
                 rules:['カロン陣営の勝利を目指します。','必ず「〇」を出します（×は出せません）。操舵室は人間を利するので図書室が推奨。','カロンの正体を一方的に知っています（カロンからは分かりません）。'] },
-            'カロン': { faction:'カロン', color:'var(--danwa)', short:'カロン陣営', desc:'冥府の渡し守。攻撃と妨害(×)で人間陣営を脱落させる最恐の存在。',
+            'カロン': { faction:'カロン', color:'var(--danwa)', short:'カロン陣営', act:'行先も〇×も自由／<b>攻撃可</b>（談話を出した日）',
+                desc:'冥府の渡し守。攻撃と妨害(×)で人間陣営を脱落させる最恐の存在。',
                 rules:['行先も〇×も自由。カロン同士はお互いを知っています。','「攻撃」は自分が談話室を伏せた日のみ可能。対象が操舵/図書なら撃破、談話なら返り討ちで自滅。','操舵室で×を出し×ポイントを稼ぎます。'] },
         };
         function factionOf(role){ return ROLE_INFO[role] ? ROLE_INFO[role].faction : null; }
@@ -830,17 +879,28 @@
                 box.innerHTML = `
                     <div style="font-size:11px;color:var(--text-sub);">あなたの役職</div>
                     <div style="font-size:30px;font-weight:900;color:${info.color||'var(--gold)'};margin:4px 0;">${r}</div>
-                    <div style="font-size:12px;font-weight:bold;margin-bottom:6px;">${info.short||''}</div>
+                    <div style="font-size:12px;font-weight:bold;margin-bottom:8px;">${info.short||''}</div>
+                    <div style="display:inline-block;font-size:12px;font-weight:700;background:var(--pt-bg);border:1px solid var(--border);border-radius:999px;padding:5px 12px;margin-bottom:10px;line-height:1.4;">できること：${info.act||''}</div>
                     <div style="font-size:12px;text-align:left;line-height:1.5;margin-bottom:8px;">${info.desc||''}</div>
                     <ul style="font-size:11px;text-align:left;line-height:1.5;padding-left:18px;margin:0;">${rulesHtml}</ul>`;
             }
-            // 全役職の一般説明（誰が何かは出さない＝ルール学習用）
+            // 全役職リファレンス（誰が何かは出さない）。各役職の取れるアクションを超簡潔に
             const all = document.getElementById('allRoles_box');
             if(all){
-                all.innerHTML = Object.keys(ROLE_INFO).map(name=>{
+                let html = ['航海士','乗客','ハデス','カロン'].map(name=>{
                     const i = ROLE_INFO[name];
-                    return `<div style="margin-bottom:6px;"><b style="color:${i.color}">${name}</b>（${i.short}）：${i.desc}</div>`;
+                    return `<div class="role-ref-item">
+                        <span class="role-ref-name" style="color:${i.color}">${name}</span>
+                        <span class="role-ref-faction">${i.short}</span>
+                        <div class="role-ref-act">${i.act}</div>
+                    </div>`;
                 }).join('');
+                html += `<div class="role-ref-item">
+                        <span class="role-ref-name" style="color:var(--bourei)">亡霊</span>
+                        <span class="role-ref-faction">脱落後の状態</span>
+                        <div class="role-ref-act">毎日<b>1人の行先を談話に上書き</b>（投票・攻撃は不可）</div>
+                    </div>`;
+                all.innerHTML = html;
             }
             document.getElementById('myRoleModal').style.display = 'flex';
         }
@@ -937,6 +997,14 @@
             for(let i=0; i<=10; i++) c.add(new Option(i, i));
             const h = document.getElementById('cfg_hades');
             for(let i=0; i<=10; i++) h.add(new Option(i, i));
+
+            // 勝利ポイント目標のプルダウン（〇:5〜25 / ✕:1〜10）
+            selC.innerHTML = '';
+            for(let i=5; i<=25; i++) selC.add(new Option(`${i}pt`, i));
+            selC.value = '12';
+            selX.innerHTML = '';
+            for(let i=1; i<=10; i++) selX.add(new Option(`${i}pt`, i));
+            selX.value = '5';
         }
 
         function changeRoom() {
@@ -1038,11 +1106,11 @@
             document.getElementById('btn_ph2_label').innerHTML = `攻撃入力<br>(${attacksCount}/${living})`;
             document.getElementById('btn_ph4_label').innerHTML = `追放投票<br>(${votesCount}/${living})`;
 
-            // 亡霊・図書室トグルの表示
+            // 亡霊・図書室トグルの表示（on/off の見た目も切替）
             const gBtn = document.getElementById('ghostToggle');
-            if(gBtn) gBtn.innerText = ghostOn() ? 'あり' : 'なし';
+            if(gBtn){ gBtn.innerText = ghostOn() ? 'あり' : 'なし'; gBtn.classList.toggle('on', ghostOn()); }
             const lBtn = document.getElementById('libraryToggle');
-            if(lBtn) lBtn.innerText = libraryOn() ? 'あり' : 'なし';
+            if(lBtn){ lBtn.innerText = libraryOn() ? 'あり' : 'なし'; lBtn.classList.toggle('on', libraryOn()); }
 
             renderIdentity();
             updateTableData();   // gTotC/gTotX を更新
@@ -1854,19 +1922,17 @@
         }
 
         function drawG(curC, curX) {
-            const tarC = parseInt(selC.value); const tarX = parseInt(selX.value);
+            const tarC = parseInt(selC.value) || 1;
+            const tarX = parseInt(selX.value) || 1;
             document.getElementById('txtCircle').innerText = curC;
             document.getElementById('txtCross').innerText = curX;
-            const f = (id, cur, tar, cls) => {
-                const g = document.getElementById(id); g.innerHTML = '';
-                for(let i=0; i<Math.max(tar, cur); i++) {
-                    let b = document.createElement('div');
-                    b.className = 'gauge-box' + (i < cur ? ' ' + cls : '');
-                    g.appendChild(b);
-                }
+            const bar = (id, cur, tar, cls) => {
+                const g = document.getElementById(id); if(!g) return;
+                const pct = Math.max(0, Math.min(100, (cur / Math.max(1, tar)) * 100));
+                g.innerHTML = `<div class="bar-fill ${cls}" style="width:${pct}%"></div>`;
             };
-            f('gaugeCircle', curC, tarC, 'filled-circle');
-            f('gaugeCross', curX, tarX, 'filled-cross');
+            bar('gaugeCircle', curC, tarC, 'fill-circle');
+            bar('gaugeCross', curX, tarX, 'fill-cross');
         }
 
         // ===== 追放・勝敗・進行ステータス =====
