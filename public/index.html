@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ghost Liner (Shared Room)</title>
+    <!-- ローカル版: Firebase SDK の代わりに自作 shim を読み込む（同期サーバー server.js と通信） -->
+    <script src="/firebase-shim.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* テーマ変数 */
+        :root { 
+            --bg: #f1f3f5; --panel-bg: white; --border: #ced4da; 
+            --text-main: #212529; --text-sub: #868e96; --table-header: #dee2e6;
+            --table-header-text: #495057; --table-left: white; --pt-bg: #e9ecef;
+            --modal-bg: white; --select-bg: #e9ecef;
+            
+            --souda: #1864ab; --danwa: #c92a2a; --tosho: #2b8a3e; --bourei: #5c5470;
+            --gold: #f5c000; --dark: #343a40; --font-family: sans-serif;
+            --row-manual-color: #212529; 
+            
+            /* ハイライトの濃さを調整 */
+            --phase-active: #99e9f2; 
+            --phase-active-border: #0b7285;
+
+            /* タイトルの背景色 */
+            --head-bg: #e9ecef;
+            /* 統一ボタンデザイン */
+            --btn-bg: #f8f9fa; --btn-color: #212529; --btn-border: #adb5bd; --btn-shadow: #ced4da;
+
+            /* ポイント行の色指定（ライト） */
+            --color-circle-pt: #1864ab; /* 青 */
+            --color-cross-pt: #c92a2a;  /* 赤 */
+            --pt-shadow: none;
+
+            /* 再生・停止ボタンの色（ライト） */
+            --btn-play-color: black;
+        }
+
+        [data-theme="dark"] {
+            --bg: #121418; --panel-bg: rgba(30, 34, 40, 0.85); --border: #3a414a;
+            --text-main: #e0e6ed; --text-sub: #8b95a1; --table-header: #1a1d24;
+            --table-header-text: #d4af37; --table-left: #1a1d24; --pt-bg: rgba(212,175,55,0.1);
+            --modal-bg: #1a1d24; --select-bg: #1a1d24;
+            
+            --souda: #326789; --danwa: #8b2626; --tosho: #275932; --bourei: #5c5470;
+            --gold: #d4af37; --dark: #a1aab3; --font-family: 'Noto Serif JP', serif;
+            --row-manual-color: var(--text-main);
+
+            /* ハイライトの濃さを調整 */
+            --phase-active: rgba(212,175,55,0.35); 
+            --phase-active-border: var(--gold);
+
+            --head-bg: #212529;
+            --btn-bg: #2a2e35; --btn-color: var(--gold); --btn-border: var(--gold); --btn-shadow: #000000;
+
+            /* ポイント行の色指定（ダーク：少し明るめ） */
+            --color-circle-pt: #4dabf7; /* 明るい青 */
+            --color-cross-pt: #ff6b6b;  /* 明るい赤 */
+            --pt-shadow: 0 1px 2px rgba(0,0,0,0.8);
+
+            /* 再生・停止ボタンの色（ダーク） */
+            --btn-play-color: white;
+        }
+
+        body { 
+            font-family: var(--font-family); background-color: var(--bg); color: var(--text-main);
+            margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; 
+            box-sizing: border-box; transition: background-color 0.3s;
+        }
+
+        /* 縦スクロールと連動して動かす上部パネル群のラッパー */
+        #top-panels-wrapper {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            z-index: 40;
+            background-color: var(--bg);
+            will-change: transform;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* パネル本体のスタイル */
+        .panel-content {
+            width: 100%; max-width: 1200px; padding: 4px 6px; box-sizing: border-box; margin: 0 auto;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+
+        .panel {
+            background: var(--panel-bg); border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+            border: 1px solid var(--border); width: 100%; box-sizing: border-box; flex-shrink: 0;
+        }
+
+        /* 1. 最上部コントロール */
+        .header-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 4px 6px; gap: 4px; }
+        .room-control { display: flex; flex-direction: row; align-items: center; gap: 4px; flex-wrap: wrap;}
+        .room-control label { font-size: 11px; font-weight: bold; color: var(--text-main); white-space: nowrap; }
+        .room-control input { width: 55px; padding: 2px; font-weight: bold; text-align: center; border: 1px solid var(--border); border-radius: 4px; background: var(--pt-bg); color: var(--text-main); font-size: 13px; }
+        .btn-theme { background: transparent; border: 1px solid var(--border); font-size: 10px; cursor: pointer; border-radius: 4px; padding: 2px 6px; color: var(--text-main); font-weight: bold;}
+        .room-note { font-size: 9px; color: var(--text-sub); margin: 0; white-space: nowrap; }
+        .btn-role { background: var(--gold); color: black; border-color: #d4af37; padding: 2px 8px; font-size: 11px; }
+
+        /* 2. スコア・テーブル設定パネル */
+        .dashboard { display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 4px 6px; gap: 6px; }
+        .size-control { display: flex; gap: 2px; align-items: center; font-size: 10px; font-weight: bold; color: var(--text-main); flex-wrap: wrap;}
+        .size-control span { text-align: right; margin-left: 2px; white-space: nowrap;}
+        .btn-op { padding: 1px 4px; font-size: 11px; font-weight: bold; border: 1px solid var(--border); border-radius: 4px; background: var(--pt-bg); cursor: pointer; color: var(--text-main); }
+        .score-visuals { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
+        .score-card { display: flex; flex-direction: row; align-items: center; gap: 4px; flex-wrap: nowrap; }
+        .score-title { font-weight: 900; font-size: 12px; width: 28px; white-space: nowrap; margin: 0; color: var(--gold); text-shadow: 0 1px 2px rgba(0,0,0,0.3);}
+        .color-cross { color: var(--dark); text-shadow: none; }
+        .target-select { padding: 1px; border-radius: 3px; border: 1px solid var(--border); font-size: 10px; font-weight: bold; background: var(--select-bg); color: var(--text-main); width: auto;}
+        .score-number { font-size: 16px; font-weight: 900; width: 20px; text-align: right; margin: 0;}
+        .gauge-grid { display: flex; flex-wrap: wrap; gap: 2px; flex-grow: 1; }
+        .gauge-box { width: 14px; height: 10px; border-radius: 2px; background-color: var(--pt-bg); border: 1px solid var(--border); box-sizing: border-box; }
+        .gauge-box.filled-circle { background-color: var(--gold); border-color: #f0c000; }
+        .gauge-box.filled-cross { background-color: var(--dark); border-color: #212529; }
+
+        /* 3. フェーズ進行パネル */
+        .phase-table-wrap { width: 100%; overflow-x: auto; background: var(--panel-bg); border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 1px solid var(--border); flex-shrink: 0; box-sizing: border-box;}
+        .phase-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 320px; }
+        .phase-table td { border: 1px dashed var(--border); text-align: center; vertical-align: middle; padding: 1px; transition: background-color 0.3s; }
+        .pt-day-col { background: var(--gold) !important; color: black !important; font-weight: 900; font-size: 11px; width: 38px; border: 1px solid var(--border) !important; padding: 2px;}
+        .pt-day-col select { width: 100%; font-size: 11px; font-weight: bold; margin-top: 1px; text-align: center; border: 1px solid #333; border-radius: 3px; padding: 2px 0px; background: white; color: black; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        .pt-next-col { width: 28px; padding: 0 !important; border: 1px solid var(--border) !important;}
+        .btn-next-day { width: 100%; height: 100%; min-height: 48px; background: #2b8a3e; color: white; border: none; font-size: 10px; font-weight: bold; cursor: pointer; writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 2px;}
+        .pt-head { background-color: var(--head-bg); font-size: 9px; font-weight: bold; color: var(--text-sub); line-height: 1.1; padding: 2px 1px !important; position: relative; height: 32px; box-sizing: border-box;}
+        .pt-cell { position: relative; height: 32px; box-sizing: border-box;}
+        
+        .pt-head.active { background-color: var(--phase-active); color: var(--text-main); }
+        .pt-head.active::after { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 1px solid var(--phase-active-border); pointer-events: none; box-sizing: border-box; z-index: 10; }
+        .pt-cell.active { background-color: var(--phase-active); }
+        .pt-cell.active::after { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 1px solid var(--phase-active-border); pointer-events: none; box-sizing: border-box; z-index: 10; border-top: none; }
+
+        .ph-title { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; white-space: nowrap; height: 100%;}
+        .timer-wrap { display: flex; flex-direction: row; align-items: center; justify-content: center; min-height: 12px; }
+        .btn-play { background: transparent; border: none; font-size: 10px; padding: 0 1px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; color: var(--btn-play-color); outline: none; margin: 0 1px; }
+        .btn-play:active { transform: scale(0.8); }
+        .timer-text { color: var(--color-circle-pt); font-size: 10px; font-weight: bold; margin-left: 1px;}
+        .btn-action { width: 98%; margin: 0 auto; font-size: 8px; padding: 3px 0; border-radius: 3px; cursor: pointer; font-weight: bold; border: 1px solid; white-space: normal; line-height: 1.1; word-break: keep-all; background: var(--btn-bg); color: var(--btn-color); border-color: var(--btn-border); box-shadow: 0 1px 0 var(--btn-shadow); position: relative; z-index: 20; }
+        .btn-action:active { transform: translateY(1px); box-shadow: none; }
+
+        /* テーブルやフッターを内包するコンテナ */
+        .container {
+            width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 6px; box-sizing: border-box;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+
+        /* 4. テーブル設定 */
+        table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+        th, td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); height: 42px; text-align: center; font-size: 12px; box-sizing: border-box; padding: 0;}
+        td.cell, th.top-header { min-width: 55px; max-width: 55px; width: 55px; position: relative;}
+        th { background-color: var(--table-header); color: var(--table-header-text); }
+        
+        /* テーブルの列行固定設定（スクロール追従） */
+        .top-header { position: -webkit-sticky; position: sticky; top: 0; z-index: 20; box-shadow: 0 1px 0 var(--border); font-size: 11px; background-color: var(--table-header); }
+        .top-left-header { position: -webkit-sticky; position: sticky; top: 0; left: 0; z-index: 30; box-shadow: 1px 1px 0 var(--border); background-color: var(--table-header); }
+        .player-name { position: -webkit-sticky; position: sticky; left: 0; z-index: 20; min-width: 120px; max-width: 120px; width: 120px; padding: 0; box-shadow: 1px 0 0 var(--border); background-color: var(--table-left); color: var(--text-main);}
+        
+        .name-container { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 2px; box-sizing: border-box; gap: 1px; }
+        .name-input { width: 100%; height: 18px; border: none; background: transparent; text-align: center; font-weight: bold; font-size: 11px; outline: none; color: var(--text-main); font-family: var(--font-family); padding: 0; min-width: 0;}
+        .vote-info-row { display: flex; justify-content: space-between; align-items: center; width: 95%; height: 12px;}
+        .vote-count-left { font-size: 9px; color: var(--color-cross-pt); font-weight: bold; width: 35%; text-align: left; white-space: nowrap; overflow: visible;}
+        .vote-target-right { font-size: 9px; font-weight: bold; width: 65%; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .vote-target-red { color: var(--color-cross-pt); }
+        .vote-target-blue { color: var(--color-circle-pt); }
+
+        .cell { font-weight: bold; color: var(--text-sub); background: var(--panel-bg); }
+        .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; width: 100%; height: 100%; position: relative; padding: 2px 0;}
+        .cell-main { font-size: 10px; line-height: 1.1; font-weight: 900;}
+        .cell-info { display: flex; flex-direction: row; gap: 4px; font-size: 9px; opacity: 0.9; align-items: center;}
+        
+        .state-souda { background-color: var(--souda); color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);}
+        .state-danwa { background-color: var(--danwa); color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);}
+        .state-tosho { background-color: var(--tosho); color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);}
+        .state-bourei { background-color: var(--bourei); color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);}
+        .state-dead { background-color: #121418; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.8);}
+        .state-check { color: var(--color-circle-pt); text-shadow: var(--pt-shadow); }
+
+        .row-pt th, .row-pt td { background-color: var(--pt-bg); font-weight: 900; }
+        .val-c { color: var(--color-circle-pt); text-shadow: var(--pt-shadow); }
+        .val-x { color: var(--color-cross-pt); text-shadow: var(--pt-shadow); }
+        .val-col { color: var(--text-main); text-shadow: none; font-weight: normal; margin: 0 2px;}
+        .hint-text { display: block; font-size: 8px; color: var(--text-sub); margin-top: 1px; font-weight: normal; letter-spacing: -0.5px; font-family: sans-serif;}
+
+        /* フッター消去ボタン領域 */
+        .footer-wrapper { position: -webkit-sticky; position: sticky; left: 0; width: 100%; display: flex; justify-content: center; z-index: 10; margin-top: 12px; margin-bottom: 20px;}
+        .footer-content { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .reset-day-group { display: flex; align-items: center; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);}
+        .reset-day-group select { font-size: 11px; padding: 2px; border: none; outline: none; background: transparent; color: var(--text-main); font-weight: bold; cursor: pointer;}
+        .btn-reset { padding: 4px 10px; background: transparent; color: var(--text-sub); border: 1px solid var(--text-sub); border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-reset.group-btn { border: none; border-left: 1px solid var(--border); border-radius: 0 4px 4px 0; margin: 0; padding: 4px 8px;}
+        .btn-reset:active { background: rgba(0,0,0,0.1); }
+
+        /* モーダル共通 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
+        .modal-content { background: var(--modal-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--gold); width: 90%; max-width: 300px; text-align: center; max-height: 90vh; overflow-y: auto; color: var(--text-main); box-shadow: 0 4px 15px rgba(0,0,0,0.5);}
+        .modal-title { font-size: 14px; font-weight: bold; margin-top: 0; margin-bottom: 10px; color: var(--gold); }
+        .modal-note { font-size: 9px; color: var(--text-sub); margin-top: -6px; margin-bottom: 12px; line-height: 1.3;}
+        .form-group { margin-bottom: 12px; text-align: left; background: var(--pt-bg); padding: 8px; border-radius: 4px;}
+        .form-label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 4px; color: var(--text-sub);}
+        .form-select { width: 100%; padding: 6px; font-size: 12px; font-weight: bold; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text-main); }
+        .radio-group { display: flex; gap: 4px; }
+        .radio-btn { flex: 1; padding: 6px 0; text-align: center; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; font-weight: bold; background: var(--panel-bg); cursor: pointer; color: var(--text-main);}
+        .radio-btn.selected { background: var(--gold); color: black; border-color: #f0c000; }
+        .radio-btn.radio-locked { opacity: 0.35; pointer-events: none; }
+        .role-note { font-size: 10px; color: var(--gold); font-weight: bold; line-height: 1.4; margin: -4px 0 10px; text-align: left; }
+
+        /* 脱落者・進行ステータス・勝利バナー */
+        .player-dead .name-input { text-decoration: line-through; opacity: 0.55; }
+        .player-dead { opacity: 0.75; }
+        #statusBar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .status-msg { font-size: 11px; font-weight: bold; color: var(--text-main); }
+        .status-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; border: 1px solid var(--btn-border); background: var(--gold); color: #000; cursor: pointer; }
+        .status-btn:active { transform: translateY(1px); }
+        .status-chip { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 10px; background: var(--pt-bg); color: var(--text-main); }
+        .win-banner { width: 100%; text-align: center; padding: 10px; border-radius: 8px; font-size: 18px; font-weight: 900; color: #fff; }
+        .win-human { background: linear-gradient(135deg, var(--souda), #1864ab); }
+        .win-charon { background: linear-gradient(135deg, var(--danwa), #5c5470); }
+        .spectator-tag { font-size: 11px; font-weight: bold; color: var(--color-cross-pt); }
+        .modal-btn { display: block; width: 100%; padding: 10px; margin-top: 15px; font-size: 13px; font-weight: bold; background: var(--dark); border: none; border-radius: 6px; cursor: pointer; color: white; }
+        .modal-btn.cancel { background: transparent; border: 1px solid #888; color: #888; margin-top: 8px;}
+
+        /* アコーディオン（折りたたみ）用スタイル */
+        .manual-details { text-align: left; background: var(--pt-bg); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 8px; padding: 4px 8px; }
+        .manual-summary { font-size: 11px; font-weight: bold; color: var(--text-main); cursor: pointer; outline: none; padding: 4px 0; list-style-position: inside; }
+        /* 文字色を var(--text-sub) から var(--text-main) に変更し、見やすくしました */
+        .manual-text { font-size: 10px; color: var(--text-main); line-height: 1.5; margin-top: 4px; margin-bottom: 4px; padding-top: 6px; border-top: 1px dashed var(--border); }
+        .manual-text ul { padding-left: 16px; margin: 0; }
+        .manual-text li { margin-bottom: 4px; }
+
+        /* ===== Stage 5: ミニマル・モバイル最優先リフレッシュ ===== */
+        :root { --radius: 12px; }
+        body, .name-input, .form-select, button, select, input, textarea {
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif !important;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body { -webkit-text-size-adjust: 100%; }
+        .panel-content { gap: 7px; padding: 7px; }
+        .panel { border-radius: var(--radius); box-shadow: 0 1px 6px rgba(0,0,0,0.07); border-color: var(--border); }
+        [data-theme="dark"] .panel { box-shadow: 0 1px 6px rgba(0,0,0,0.4); }
+        .phase-table-wrap { border-radius: var(--radius); box-shadow: 0 1px 6px rgba(0,0,0,0.07); }
+
+        /* タップしやすいボタン・入力 */
+        .btn-action { font-size: 11px !important; min-height: 50px; padding: 6px 3px; border-radius: 9px; line-height: 1.25; font-weight: 700; }
+        .pt-head, .pt-cell { height: auto; min-height: 40px; }
+        .btn-op { font-size: 13px; padding: 6px 10px; border-radius: 8px; min-width: 32px; }
+        .btn-theme { font-size: 12px; padding: 6px 10px; border-radius: 8px; }
+        .modal-btn { padding: 14px; border-radius: 11px; font-size: 14px; letter-spacing: 0.02em; }
+        .radio-btn { padding: 12px 4px; font-size: 13px; border-radius: 10px; }
+        .form-select { padding: 10px; font-size: 14px; border-radius: 10px; }
+        .form-group { padding: 11px; border-radius: 10px; }
+        .modal-content { border-radius: 16px; max-width: 350px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.45); }
+        .modal-title { font-size: 16px; }
+        .room-control input { font-size: 15px; padding: 6px; border-radius: 8px; width: 66px; }
+
+        /* スコア・ゲージ */
+        .gauge-box { width: 16px; height: 12px; border-radius: 3px; }
+        .score-number { font-size: 18px; }
+        .target-select { font-size: 12px; padding: 5px; border-radius: 7px; }
+
+        /* 識別バー・ステータス */
+        #identityPanel { padding: 9px 11px; gap: 10px; }
+        #myRoleBadge { font-size: 13px; }
+        .status-btn { padding: 10px 16px; border-radius: 9px; font-size: 13px; }
+
+        /* テーブル：罫線を控えめに、文字を少し大きく */
+        .phase-table td { border: 1px solid var(--border); }
+        .cell-main { font-size: 11px; }
+        td.cell, th.top-header { min-width: 60px; max-width: 60px; width: 60px; }
+
+        /* スマホ幅では行動ボタンの文字を確保 */
+        @media (max-width: 480px) {
+            .btn-action { font-size: 10.5px !important; min-height: 52px; }
+            .modal-content { max-width: 94%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ▼ 上部パネル群（スクロールに合わせてスッと上に逃げます） ▼ -->
+    <div id="top-panels-wrapper">
+        <div class="panel-content">
+            <!-- 1. 最上部コントロール -->
+            <div class="panel header-controls">
+                <div class="room-control">
+                    <label>PASS:</label>
+                    <input type="text" id="roomIdInput" onchange="changeRoom()" maxlength="6" inputmode="numeric">
+                    <button class="btn-theme" onclick="toggleTheme()" id="themeBtn">ダーク</button>
+                    <!-- ミュートトグルボタン -->
+                    <button class="btn-theme" onclick="toggleMute()" id="muteBtn" style="font-size: 14px; padding: 0 4px;" title="サウンド切替">🔇</button>
+                    <span class="room-note">同じ数字を入力。24時間で消去</span>
+                </div>
+                <!-- ★ 役職分配ボタン ＆ 使い方ボタン ★ -->
+                <div style="display: flex; gap: 4px;">
+                    <button class="btn-op btn-role" onclick="openRoleModal()">役職分配</button>
+                    <button class="btn-op" onclick="openManualModal()" style="background:var(--pt-bg); color:var(--text-main);">使い方</button>
+                </div>
+            </div>
+
+            <!-- 1.5 本人（座席）と役職バー -->
+            <div class="panel" id="identityPanel" style="display:flex; align-items:center; gap:8px; padding:6px 8px; flex-wrap:wrap;">
+                <span style="font-size:11px; font-weight:bold; white-space:nowrap;">あなた:</span>
+                <select id="mySeatSelect" class="form-select" style="width:auto; min-width:96px; padding:4px; font-size:12px;" onchange="setMySeat(this.value)"></select>
+                <span id="myRoleBadge" style="font-size:12px; font-weight:900; white-space:nowrap;"></span>
+                <button class="btn-op" onclick="openMyRoleModal()" style="margin-left:auto; background:var(--pt-bg); color:var(--text-main);">自分の役職/説明</button>
+            </div>
+
+            <!-- 2. スコア・テーブル設定パネル -->
+            <div class="panel dashboard">
+                <div class="size-control">
+                    <span>人数:</span><span id="displayPlayers" style="width:12px; text-align:center;">5</span>
+                    <button class="btn-op" onclick="changePlayers(-1)">-</button><button class="btn-op" onclick="changePlayers(1)">+</button>
+                    <span style="margin-left:4px;">操舵必要:</span><span id="displayNeedBridge" style="width:12px; text-align:center;">2</span>
+                    <button class="btn-op" onclick="changeNeedBridge(-1)">-</button><button class="btn-op" onclick="changeNeedBridge(1)">+</button>
+                    <span style="margin-left:4px;">Day数:</span><span id="displayTurns" style="width:12px; text-align:center;">4</span>
+                    <button class="btn-op" onclick="changeTurns(-1)">-</button><button class="btn-op" onclick="changeTurns(1)">+</button>
+                    <span style="margin-left:4px;">亡霊:</span>
+                    <button class="btn-op" id="ghostToggle" onclick="toggleGhost()" title="脱落者が亡霊になるか" style="min-width:30px;">あり</button>
+                    <span style="margin-left:4px;">図書室:</span>
+                    <button class="btn-op" id="libraryToggle" onclick="toggleLibrary()" title="図書室を使うか" style="min-width:30px;">あり</button>
+                </div>
+                <div class="score-visuals">
+                    <div class="score-card">
+                        <span class="score-title color-circle">○pt</span>
+                        <select id="targetCircle" class="target-select" onchange="saveSettings()">
+                            <option value="5">勝利: 5pt</option><option value="6">勝利: 6pt</option><option value="7">勝利: 7pt</option>
+                            <option value="8">勝利: 8pt</option><option value="9">勝利: 9pt</option><option value="10">勝利: 10pt</option>
+                            <option value="11">勝利: 11pt</option><option value="12" selected>勝利: 12pt</option><option value="13">勝利: 13pt</option>
+                            <option value="14">勝利: 14pt</option><option value="15">勝利: 15pt</option><option value="16">勝利: 16pt</option>
+                            <option value="17">勝利: 17pt</option><option value="18">勝利: 18pt</option><option value="19">勝利: 19pt</option>
+                            <option value="20">勝利: 20pt</option><option value="21">勝利: 21pt</option><option value="22">勝利: 22pt</option>
+                            <option value="23">勝利: 23pt</option><option value="24">勝利: 24pt</option><option value="25">勝利: 25pt</option>
+                        </select>
+                        <span class="score-number color-circle" id="txtCircle">0</span>
+                        <div class="gauge-grid" id="gaugeCircle"></div>
+                    </div>
+                    <div class="score-card">
+                        <span class="score-title color-cross">✕pt</span>
+                        <select id="targetCross" class="target-select" onchange="saveSettings()">
+                            <option value="1">勝利: 1pt</option><option value="2">勝利: 2pt</option><option value="3">勝利: 3pt</option>
+                            <option value="4">勝利: 4pt</option><option value="5" selected>勝利: 5pt</option><option value="6">勝利: 6pt</option>
+                            <option value="7">勝利: 7pt</option><option value="8">勝利: 8pt</option><option value="9">勝利: 9pt</option>
+                            <option value="10">勝利: 10pt</option>
+                        </select>
+                        <span class="score-number color-cross" id="txtCross">0</span>
+                        <div class="gauge-grid" id="gaugeCross"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. フェーズ進行パネル -->
+            <div class="phase-table-wrap">
+                <table class="phase-table">
+                    <tbody>
+                        <tr>
+                            <td rowspan="2" class="pt-day-col">Day<br><select id="currentDaySelect" onchange="changeCurrentDay(this.value)"></select></td>
+                            
+                            <td class="pt-head" id="ph_head_1">
+                                <div class="ph-title">
+                                    <span>朝の議論</span>
+                                    <div class="timer-wrap">
+                                        <button class="btn-play" onclick="toggleTimer(1)" title="タイマー開始/停止" id="btn_play_1">▶</button>
+                                        <span id="displayTimer_1" class="timer-text"></span>
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            <td class="pt-head" id="ph_head_2">
+                                <div class="ph-title">
+                                    <span>カロン密談</span>
+                                    <div class="timer-wrap">
+                                        <button class="btn-play" onclick="toggleTimer(2)" title="タイマー開始/停止" id="btn_play_2">▶</button>
+                                        <span id="displayTimer_2" class="timer-text"></span>
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            <td class="pt-head" id="ph_head_3">
+                                <div class="ph-title">
+                                    <span>昼の行動</span>
+                                    <div class="timer-wrap">
+                                        <span id="displayTimer_3" class="timer-text"></span>
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            <td class="pt-head" id="ph_head_4">
+                                <div class="ph-title">
+                                    <span>夜の追放</span>
+                                    <div class="timer-wrap">
+                                        <button class="btn-play" onclick="toggleTimer(4)" title="タイマー開始/停止" id="btn_play_4">▶</button>
+                                        <span id="displayTimer_4" class="timer-text"></span>
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            <td rowspan="2" class="pt-next-col"><button class="btn-next-day" onclick="nextDay()">次Day→</button></td>
+                        </tr>
+                        <tr>
+                            <td class="pt-cell" id="ph_pl_1"><button class="btn-action" onclick="openInputModal()" id="btn_ph1_label">行先入力<br>(0/5)</button></td>
+                            <td class="pt-cell" id="ph_pl_2"><button class="btn-action" onclick="openAttackModal()" id="btn_ph2_label">攻撃入力<br>(0/5)</button></td>
+                            <td class="pt-cell" id="ph_gm_3"><button class="btn-action" onclick="setPhase(3)">結果公開<br>(GMのみ)</button></td>
+                            <td class="pt-cell" id="ph_pl_4"><button class="btn-action" onclick="openVoteModal()" id="btn_ph4_label">追放投票<br>(0/5)</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 3.5 進行ステータス／追放結果／勝利バナー -->
+            <div class="panel" id="statusBar" style="padding:6px 8px; display:none;"></div>
+        </div>
+    </div>
+    <!-- ▲ 上部パネル群ここまで ▲ -->
+
+    <!-- トップパネルが重ならないようにするための見えない余白 -->
+    <div id="top-spacer"></div>
+
+    <div class="container">
+        <!-- 4. テーブル -->
+        <table id="scoreTable">
+            <thead id="tHead"></thead>
+            <tbody id="tBody"></tbody>
+        </table>
+        
+        <!-- フッター（消去ボタン領域） -->
+        <div class="footer-wrapper">
+            <div class="footer-content">
+                <div class="reset-day-group">
+                    <select id="reset_day_sel"></select>
+                    <button class="btn-reset group-btn" onclick="resetSingleDay()">の記録を消去</button>
+                </div>
+                <button class="btn-reset" onclick="resetBoard()">すべての記録を消去</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- モーダル 使い方（マニュアル） -->
+    <div id="manualModal" class="modal">
+        <div class="modal-content" style="max-width: 320px;">
+            <p class="modal-title">アプリの使い方</p>
+            <p class="modal-note">気になる項目をタップして開いてください。</p>
+
+            <details class="manual-details">
+                <summary class="manual-summary">1. 部屋の共有と設定</summary>
+                <div class="manual-text">
+                    <ul>
+                        <li>参加者全員で共通の「PASS（最大6桁の数字）」を決めて入力してください。同じPASSを入力した人同士で画面が同期されます（データは24時間で消去）。</li>
+                        <li><b>プレイ人数や操舵必要人数、Day数、勝利ポイントは手動で変更してください。</b></li>
+                        <li>「ダーク/ライト」ボタンで画面の色を変更でき、「🔇/🔊」ボタンでタイマー音のオン/オフを切り替えられます。</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="manual-details">
+                <summary class="manual-summary">2. 役職の分配</summary>
+                <div class="manual-text">
+                    <ul>
+                        <li>代表者1名が「役職分配」を押し、役職の内訳を設定して「ランダムに分配する」を押します。</li>
+                        <li>参加者は各自のスマホで自分の名前を選び、自分の役職を確認してください。（※他人の役職は絶対に見ないよう注意！）</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="manual-details">
+                <summary class="manual-summary">3. ゲームの進行と入力</summary>
+                <div class="manual-text">
+                    <ul>
+                        <li>誰か１人をプレイヤー兼ゲームマスターに決めてください。その人はプレイヤーとして参加しながら、ゲーム開始前の役職確認やカロンの密談の際の声掛け、結果公開ボタンのタップを担当してください。</li>
+                        <li>各フェーズの「▶」を押すとタイマーが開始します（全員のスマホで動きます）。</li>
+                        <li>「行先入力」「攻撃入力」「追放投票」は、各自のスマホから個別に入力します。</li>
+                        <li>全員の入力後、「結果公開」ボタンを押すと、生死や獲得ポイントが自動計算されます。</li>
+                        <li>処理が終わったら「次Day→」を押して翌日に進んでください。</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="manual-details">
+                <summary class="manual-summary">4. 表（テーブル）の見方</summary>
+                <div class="manual-text">
+                    <ul>
+                        <li>各プレイヤーがどこへ行ったか、カロンの攻撃を受けたか（💀）が色付きで記録されます。</li>
+                        <li>下部の「○pt / ✕pt」にはその日の獲得数が表示され、設定した勝利ポイントのゲージが貯まっていきます。</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="manual-details">
+                <summary class="manual-summary">5. やり直し・データ消去</summary>
+                <div class="manual-text">
+                    <ul>
+                        <li>各入力は、結果が公開される前であれば何度でも選び直せます（上書きされます）。</li>
+                        <li>特定のDayをやり直したい場合は、一番下の「〇の記録を消去」でその日のデータだけを取り消せます。</li>
+                    </ul>
+                </div>
+            </details>
+
+            <button class="modal-btn cancel" onclick="closeModal('manualModal')">閉じる</button>
+        </div>
+    </div>
+
+    <!-- モーダル 自分の役職/説明 -->
+    <div id="myRoleModal" class="modal">
+        <div class="modal-content">
+            <p class="modal-title">自分の役職</p>
+            <div id="myRole_box" style="text-align:center; min-height:40px;"></div>
+            <details class="manual-details" style="margin-top:12px;">
+                <summary class="manual-summary">全役職の説明（だれが何かは表示されません）</summary>
+                <div class="manual-text" id="allRoles_box"></div>
+            </details>
+            <button class="modal-btn cancel" onclick="closeModal('myRoleModal')">閉じる</button>
+        </div>
+    </div>
+
+    <!-- モーダル 役職分配 -->
+    <div id="roleModal" class="modal">
+        <div class="modal-content">
+            <p class="modal-title">役職分配</p>
+            <p class="modal-note" style="font-size:11px; text-align:left; line-height:1.5;">
+                現在、<strong id="role_players_count">5</strong>人がプレイしています。
+            </p>
+            
+            <div class="form-group" style="background:var(--pt-bg); border:1px solid var(--border); margin-bottom:12px; padding:8px;">
+                <span class="form-label" style="text-align:center;">役職内訳（合計をプレイ人数に合わせる）</span>
+                <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; align-items:center;">
+                    <div style="font-size:11px; font-weight:bold; color:var(--text-main);">航海士 <select id="cfg_sailor" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
+                    <div style="font-size:11px; font-weight:bold; color:var(--text-main);">乗客 <select id="cfg_pass" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
+                    <div style="font-size:11px; font-weight:bold; color:var(--text-main);">カロン <select id="cfg_charon" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
+                    <div style="font-size:11px; font-weight:bold; color:var(--text-main);">ハデス <select id="cfg_hades" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
+                </div>
+            </div>
+
+            <button class="modal-btn" style="background:var(--gold); color:black; margin-bottom:15px;" onclick="distributeRoles()">役職をランダムに分配する</button>
+
+            <div id="role_dist_status" style="font-size:11px; color:var(--text-sub); min-height:16px; margin-bottom:8px; line-height:1.4;"></div>
+
+            <div class="form-group" style="background:transparent; border:1px solid var(--border); padding:8px;">
+                <span class="form-label" style="text-align:center;">役職の確認</span>
+                <p style="font-size:11px; line-height:1.5; margin:4px 0;">分配後は各自、上部の「<b>あなた</b>」で自分の座席を選び、下のボタンで<b>自分の役職だけ</b>確認してください。<br>（他人の役職は表示されません）</p>
+                <button class="modal-btn" style="margin-top:6px;" onclick="closeModal('roleModal'); openMyRoleModal();">自分の役職を確認する</button>
+            </div>
+
+            <button class="modal-btn cancel" onclick="closeModal('roleModal')">閉じる</button>
+        </div>
+    </div>
+
+    <!-- モーダル 行先入力 -->
+    <div id="inputModal" class="modal">
+        <div class="modal-content">
+            <p class="modal-title">行先入力</p>
+            <p class="modal-note">※結果発表までは何度でも選び直せます（ルール上は不可ですが誤タップ対策として）。<br>全員が入力したらタイマーがストップします。</p>
+            
+            <div class="form-group">
+                <span class="form-label">自分の名前</span>
+                <select id="in_name" class="form-select"></select>
+            </div>
+
+            <div class="form-group" id="input_type_group">
+                <span class="form-label">状態</span>
+                <div class="radio-group">
+                    <div class="radio-btn selected" id="type_alive" onclick="toggleInputType('alive')">生存者</div>
+                    <div class="radio-btn" id="type_ghost" onclick="toggleInputType('ghost')">亡霊</div>
+                </div>
+            </div>
+
+            <div id="menu_alive">
+                <p class="role-note" id="in_role_note"></p>
+                <div class="form-group">
+                    <span class="form-label">行先</span>
+                    <div class="radio-group">
+                        <div class="radio-btn selected" id="dest_souda" onclick="selectRadio('dest', '操舵')">操舵室</div>
+                        <div class="radio-btn" id="dest_danwa" onclick="selectRadio('dest', '談話')">談話室</div>
+                        <div class="radio-btn" id="dest_tosho" onclick="selectRadio('dest', '図書')">図書室</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <span class="form-label">カード</span>
+                    <div class="radio-group">
+                        <div class="radio-btn selected" id="card_c" onclick="selectRadio('card', 'C')">〇</div>
+                        <div class="radio-btn" id="card_x" onclick="selectRadio('card', 'X')">✕</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="menu_ghost" style="display: none;">
+                <div class="form-group">
+                    <span class="form-label">妨害して「談話室」に強制させる相手<br><span style="font-size:8px; font-weight:normal;">（前日に妨害された人は妨害してはいけません）</span></span>
+                    <select id="in_ghost_target" class="form-select"></select>
+                </div>
+            </div>
+
+            <button class="modal-btn" onclick="submitInput()">決定する</button>
+            <button class="modal-btn cancel" onclick="closeModal('inputModal')">キャンセル</button>
+        </div>
+    </div>
+
+    <!-- モーダル 攻撃入力 -->
+    <div id="attackModal" class="modal">
+        <div class="modal-content">
+            <p class="modal-title">カロンの攻撃</p>
+            <p class="modal-note">※全員がこの画面から入力してください。<br>（カロンではない人はそのまま決定を押す）</p>
+            
+            <div class="form-group">
+                <span class="form-label">自分の名前</span>
+                <select id="atk_name" class="form-select"></select>
+            </div>
+
+            <p class="role-note" id="atk_role_auto_note" style="display:none;"></p>
+
+            <div class="form-group" id="atk_role_group">
+                <span class="form-label">あなたの役職</span>
+                <div class="radio-group">
+                    <div class="radio-btn selected" id="role_no" onclick="selectAtkRole(false)" style="font-size:9px; display:flex; align-items:center; justify-content:center; padding:2px; line-height:1.2;">カロンではない<br>（カロンだが攻撃しない）</div>
+                    <div class="radio-btn" id="role_yes" onclick="selectAtkRole(true)" style="display:flex; align-items:center; justify-content:center; padding:2px;">カロンの攻撃</div>
+                </div>
+            </div>
+
+            <div class="form-group" id="atk_target_group" style="display: none;">
+                <span class="form-label">攻撃対象<br><span style="font-size:8px; font-weight:normal;">※談話室を伏せたときのみ攻撃可能です</span></span>
+                <select id="atk_target" class="form-select"></select>
+            </div>
+
+            <button class="modal-btn" onclick="submitAttack()">決定する</button>
+            <button class="modal-btn cancel" onclick="closeModal('attackModal')">キャンセル</button>
+        </div>
+    </div>
+
+    <!-- モーダル 追放投票 -->
+    <div id="voteModal" class="modal">
+        <div class="modal-content">
+            <p class="modal-title">追放投票</p>
+            <p class="modal-note">※亡霊には投票権なし。亡霊は「棄権する」を選んでください</p>
+
+            <div class="form-group">
+                <span class="form-label">自分の名前</span>
+                <select id="vote_name" class="form-select"></select>
+            </div>
+
+            <div class="form-group">
+                <span class="form-label">投票行動</span>
+                <div class="radio-group">
+                    <div class="radio-btn selected" id="vote_type_skip" onclick="selectVoteType(false)">棄権する</div>
+                    <div class="radio-btn" id="vote_type_do" onclick="selectVoteType(true)">投票する</div>
+                </div>
+            </div>
+
+            <div class="form-group" id="vote_target_group" style="display: none;">
+                <span class="form-label">追放する相手</span>
+                <select id="vote_target" class="form-select"></select>
+            </div>
+
+            <button class="modal-btn" onclick="submitVote()">決定する</button>
+            <button class="modal-btn cancel" onclick="closeModal('voteModal')">キャンセル</button>
+        </div>
+    </div>
+
+    <script>
+        // ▼▼ マニュアル（使い方）モーダルを開く関数 ▼▼
+        function openManualModal() {
+            document.getElementById('manualModal').style.display = 'flex';
+        }
+
+        // ▼▼ スクロールに合わせて上部パネルを自然に逃がす処理 ▼▼
+        document.addEventListener('DOMContentLoaded', () => {
+            const topPanels = document.getElementById('top-panels-wrapper');
+            const spacer = document.getElementById('top-spacer');
+
+            function updateSpacer() {
+                if(topPanels && spacer) {
+                    spacer.style.height = topPanels.offsetHeight + 'px';
+                }
+            }
+            
+            if(window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(updateSpacer);
+                resizeObserver.observe(topPanels);
+            } else {
+                window.addEventListener('resize', updateSpacer);
+            }
+            updateSpacer();
+
+            window.addEventListener('scroll', () => {
+                let st = window.scrollY || document.documentElement.scrollTop;
+                let ph = topPanels.offsetHeight;
+                let moveY = -st;
+                // パネルの高さ分だけ上に逃がしたらそこで止める
+                if (moveY < -ph) moveY = -ph;
+                topPanels.style.transform = `translateY(${moveY}px)`;
+            }, { passive: true });
+        });
+        // ▲▲ ここまで ▲▲
+
+        // テーマ切り替え
+        const savedTheme = localStorage.getItem('ghostTheme') || 'light';
+        if(savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeText();
+
+        function toggleTheme() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if(isDark) {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('ghostTheme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('ghostTheme', 'dark');
+            }
+            updateThemeText();
+        }
+        function updateThemeText() { document.getElementById('themeBtn').innerText = document.documentElement.getAttribute('data-theme') === 'dark' ? 'ライト' : 'ダーク'; }
+
+        // ローカル版: 外部 Firebase には接続しない。同期は server.js（同一オリジン）が担う。
+        const firebaseConfig = {}; // 互換のため残置（shim は内容を使用しない）
+        firebase.initializeApp(firebaseConfig);
+        
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let gameRef = null;
+        let gData = null; 
+        
+        let p_players = 5; let p_turns = 4; let p_need = 2;
+        let currentDay = 1; let currentPhase = 1;
+
+        let tempInput = { type: 'alive', dest: '操舵', card: 'C' };
+        let isCharon = false; 
+        let isVoting = false; // 追放投票で「投票する」を選んでいるか
+
+        const selC = document.getElementById('targetCircle');
+        const selX = document.getElementById('targetCross');
+
+        let lastBuiltPlayers = 0; let lastBuiltTurns = 0;
+        let lastRolePlayers = 0;
+
+        // ===== 役職情報（陣営・説明・制約）=====
+        const ROLE_INFO = {
+            '航海士': { faction:'人間', color:'var(--souda)', short:'人間陣営', desc:'人間陣営の要。航海士同士はお互いの正体を知っています。',
+                rules:['毎ターン必ず「操舵室」へ行き、必ず「〇」を出します（談話室・図書室には行けません）。','カロンに最も狙われる立場。カミングアウトは終盤の切り札に。'] },
+            '乗客': { faction:'人間', color:'var(--tosho)', short:'人間陣営', desc:'特殊能力を持たない多数派の人間。',
+                rules:['必ず「〇」を出します（×は出せません）。','行先は自由（操舵室/談話室/図書室）。議論を主導し操舵室の人数を調整しましょう。'] },
+            'ハデス': { faction:'カロン', color:'var(--bourei)', short:'カロン陣営', desc:'冥界の王。人間陣営とカロン陣営の両方を正確に知る唯一の役職。',
+                rules:['カロン陣営の勝利を目指します。','必ず「〇」を出します（×は出せません）。操舵室は人間を利するので図書室が推奨。','カロンの正体を一方的に知っています（カロンからは分かりません）。'] },
+            'カロン': { faction:'カロン', color:'var(--danwa)', short:'カロン陣営', desc:'冥府の渡し守。攻撃と妨害(×)で人間陣営を脱落させる最恐の存在。',
+                rules:['行先も〇×も自由。カロン同士はお互いを知っています。','「攻撃」は自分が談話室を伏せた日のみ可能。対象が操舵/図書なら撃破、談話なら返り討ちで自滅。','操舵室で×を出し×ポイントを稼ぎます。'] },
+        };
+        function factionOf(role){ return ROLE_INFO[role] ? ROLE_INFO[role].faction : null; }
+
+        // 直近の合計ポイント（勝敗判定用にupdateTableDataが更新）
+        let gTotC = 0, gTotX = 0;
+
+        // ===== 自分の座席（この端末の本人）=====
+        let mySeat = null; // 'p1' 等。DBには置かずこの端末にだけ保存
+        function seatStorageKey(){ return 'gl_seat_' + (document.getElementById('roomIdInput')?.value || ''); }
+        function loadMySeat(){ try { mySeat = localStorage.getItem(seatStorageKey()) || null; } catch(_) { mySeat = null; } }
+        function setMySeat(pKey){
+            mySeat = pKey || null;
+            try { if(mySeat) localStorage.setItem(seatStorageKey(), mySeat); else localStorage.removeItem(seatStorageKey()); } catch(_){}
+            renderIdentity();
+            if(gData) updateUI();
+        }
+        function myRole(){ return (mySeat && gData && gData.roles) ? gData.roles[mySeat] : null; }
+        function ghostOn(){ // 亡霊ありか（未設定時は7人以上で既定ON）
+            let g = gData?.settings?.ghostEnabled;
+            if(g === undefined || g === null) return p_players >= 7;
+            return !!g;
+        }
+        function libraryOn(){ // 図書室ありか（未設定時は既定ON）
+            let l = gData?.settings?.libraryEnabled;
+            if(l === undefined || l === null) return true;
+            return !!l;
+        }
+        function isDeadSeat(s){ return !!(s && gData?.dead && gData.dead[s]); }
+        function livingCount(){ let n=0; for(let i=1;i<=p_players;i++){ if(!isDeadSeat('p'+i)) n++; } return n; }
+        // 行先入力が必要な座席数（生存者＋亡霊。観戦者＝死亡かつ亡霊なし は除く）
+        function activeInputCount(){
+            let n=0;
+            for(let i=1;i<=p_players;i++){
+                const s='p'+i;
+                const spectator = isDeadSeat(s) && !ghostOn();
+                if(!spectator) n++;
+            }
+            return n;
+        }
+
+        // 画面上部の「あなた／役職」バーを更新
+        function renderIdentity(){
+            const started = !!(gData && gData.roles);   // 役職分配済み＝ゲーム開始
+            const locked = started && !!mySeat;          // 開始後＆座席確定済みは変更不可
+            const sel = document.getElementById('mySeatSelect');
+            if(sel){
+                const cur = mySeat || '';
+                sel.innerHTML = '';
+                sel.add(new Option('（座席を選択）',''));
+                for(let i=1;i<=p_players;i++){ let nm = gData?.names?.[`p${i}`]||`P${i}`; sel.add(new Option(nm, `p${i}`)); }
+                sel.value = cur;
+                sel.disabled = locked;                   // 開始後は座席変更を禁止
+                sel.title = locked ? 'ゲーム開始後は座席を変更できません（再戦/全消去でリセット）' : '';
+                sel.style.opacity = locked ? '0.7' : '';
+            }
+            const badge = document.getElementById('myRoleBadge');
+            if(badge){
+                const r = myRole();
+                const lockMark = locked ? ' <span title="座席は固定されています">🔒</span>' : '';
+                if(mySeat && r){ const info=ROLE_INFO[r]; badge.innerHTML = `役職: <b style="color:${info?info.color:'inherit'}">${r}</b>（${info?info.short:''}）${lockMark}`; }
+                else if(mySeat){ badge.innerHTML = '<span style="color:var(--text-sub)">役職: 未分配</span>'; }
+                else { badge.innerHTML = '<span style="color:var(--text-sub)">座席を選んでください</span>'; }
+            }
+        }
+
+        // 亡霊の有無トグル
+        function toggleGhost(){
+            if(!gameRef) return;
+            gameRef.update({ 'settings/ghostEnabled': !ghostOn() });
+        }
+        // 図書室の有無トグル
+        function toggleLibrary(){
+            if(!gameRef) return;
+            gameRef.update({ 'settings/libraryEnabled': !libraryOn() });
+        }
+
+        // 自分の役職＆説明モーダル（自分の分だけ表示）
+        function openMyRoleModal(){
+            const box = document.getElementById('myRole_box');
+            const r = myRole();
+            if(!mySeat){
+                box.innerHTML = '<p style="font-size:12px;">まず上部の「あなた」で自分の座席を選んでください。</p>';
+            } else if(!r){
+                box.innerHTML = '<p style="font-size:12px;">まだ役職が分配されていません。代表者が「役職分配」を行ってください。</p>';
+            } else {
+                const info = ROLE_INFO[r] || {};
+                let rulesHtml = (info.rules||[]).map(x=>`<li>${x}</li>`).join('');
+                box.innerHTML = `
+                    <div style="font-size:11px;color:var(--text-sub);">あなたの役職</div>
+                    <div style="font-size:30px;font-weight:900;color:${info.color||'var(--gold)'};margin:4px 0;">${r}</div>
+                    <div style="font-size:12px;font-weight:bold;margin-bottom:6px;">${info.short||''}</div>
+                    <div style="font-size:12px;text-align:left;line-height:1.5;margin-bottom:8px;">${info.desc||''}</div>
+                    <ul style="font-size:11px;text-align:left;line-height:1.5;padding-left:18px;margin:0;">${rulesHtml}</ul>`;
+            }
+            // 全役職の一般説明（誰が何かは出さない＝ルール学習用）
+            const all = document.getElementById('allRoles_box');
+            if(all){
+                all.innerHTML = Object.keys(ROLE_INFO).map(name=>{
+                    const i = ROLE_INFO[name];
+                    return `<div style="margin-bottom:6px;"><b style="color:${i.color}">${name}</b>（${i.short}）：${i.desc}</div>`;
+                }).join('');
+            }
+            document.getElementById('myRoleModal').style.display = 'flex';
+        }
+
+        // ★ 音声（Web Audio API）関連の変数
+        let audioCtx = null;
+        let lastBeepSec = -1;
+        let isMuted = true; // デフォルトは全員ミュート
+
+        // ミュートの切り替え処理
+        function toggleMute() {
+            isMuted = !isMuted;
+            const btn = document.getElementById('muteBtn');
+            if (isMuted) {
+                btn.innerText = '🔇';
+            } else {
+                btn.innerText = '🔊';
+                initAudio(); // ユーザー操作フックとしてAudioContextを有効化
+            }
+        }
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playTone(freq, startTime, duration) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.5, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        function playBeep(type) {
+            if (isMuted) return; 
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            
+            if (type === 'normal') {
+                playTone(880, now, 0.1);
+            } else if (type === 'ten') {
+                playTone(880, now, 0.1);
+                playTone(880, now + 0.15, 0.1);
+            } else if (type === 'end') {
+                playTone(1046.5, now, 0.1);
+                playTone(1046.5, now + 0.15, 0.1);
+                playTone(1318.5, now + 0.3, 0.4);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initRoleSelects(); 
+
+            buildTableSkeleton();
+            lastBuiltPlayers = p_players;
+            lastBuiltTurns = p_turns;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            let initialRoom = urlParams.get('room');
+            if (!initialRoom) {
+                initialRoom = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+                window.history.replaceState(null, null, `?room=${initialRoom}`);
+            }
+            document.getElementById('roomIdInput').value = initialRoom;
+            
+            auth.signInAnonymously()
+                .then(() => {
+                    joinRoom(initialRoom);
+                    setInterval(drawTimer, 1000);
+                })
+                .catch((error) => {
+                    console.error("Firebaseログインエラー:", error);
+                    alert("データベースへの接続に失敗しました。ページを再読み込みしてください。");
+                });
+        });
+
+        function initRoleSelects() {
+            const s = document.getElementById('cfg_sailor');
+            for(let i=0; i<=10; i++) s.add(new Option(i, i));
+            const p = document.getElementById('cfg_pass');
+            for(let i=0; i<=15; i++) p.add(new Option(i, i));
+            const c = document.getElementById('cfg_charon');
+            for(let i=0; i<=10; i++) c.add(new Option(i, i));
+            const h = document.getElementById('cfg_hades');
+            for(let i=0; i<=10; i++) h.add(new Option(i, i));
+        }
+
+        function changeRoom() {
+            const newId = document.getElementById('roomIdInput').value.trim();
+            if (!newId) return;
+            window.history.pushState(null, null, `?room=${newId}`);
+            joinRoom(newId);
+        }
+
+        function joinRoom(roomId) {
+            if (gameRef) gameRef.off();
+            gameRef = db.ref('rooms/' + roomId);
+            loadMySeat(); // この部屋での自分の座席を復元
+
+            gameRef.on('value', (snap) => {
+                gData = snap.val();
+                if (!gData) {
+                    gData = {
+                        settings: { players: 5, turns: 4, needBridge: 2, targetC: 12, targetX: 5 },
+                        game: { day: 1, phase: 1 }
+                    };
+                    gameRef.set(gData);
+                    return;
+                }
+                
+                p_players = gData.settings?.players || 5;
+                p_turns = gData.settings?.turns || 4;
+                p_need = gData.settings?.needBridge || 2;
+                currentDay = gData.game?.day || 1;
+                currentPhase = gData.game?.phase || 1;
+
+                // 全員の入力が揃ったら自動で次フェーズへ（決着後・分配前は除く）
+                if (gData.roles && !(gData.game && gData.game.winner)) {
+                    if (currentPhase === 1) {
+                        let inputs = gData.inputs?.[`d${currentDay}`] || {};
+                        let need = activeInputCount();
+                        if (need > 0 && Object.keys(inputs).length >= need) {
+                            setPhase(2);   // 朝の議論 → カロン密談
+                            return;
+                        }
+                    } else if (currentPhase === 2) {
+                        let attacks = gData.attacks?.[`d${currentDay}`] || {};
+                        let need = livingCount();
+                        if (need > 0 && Object.keys(attacks).length >= need) {
+                            setPhase(3);   // カロン密談 → 昼の行動（結果公開）
+                            return;
+                        }
+                    }
+                }
+                
+                selC.value = gData.settings?.targetC || 12;
+                selX.value = gData.settings?.targetX || 5;
+
+                updateUI();
+
+                // 役職モーダルが開いていれば最新の自分の役職に追従
+                if(document.getElementById('myRoleModal') && document.getElementById('myRoleModal').style.display === 'flex') {
+                    openMyRoleModal();
+                }
+            });
+        }
+
+        function updateUI() {
+            document.getElementById('displayPlayers').innerText = p_players;
+            document.getElementById('displayNeedBridge').innerText = p_need;
+            document.getElementById('displayTurns').innerText = p_turns;
+            
+            if(document.getElementById('roleModal').style.display === 'flex') {
+                document.getElementById('role_players_count').innerText = p_players;
+            }
+
+            populateCurrentDaySelect();
+
+            let targetI = currentPhase === 2.5 ? 3 : currentPhase;
+            for(let i=1; i<=4; i++) {
+                let hd = document.getElementById('ph_head_' + i);
+                if(hd) hd.classList.toggle('active', i === targetI);
+                let pl = document.getElementById('ph_pl_' + i);
+                if(pl) pl.classList.toggle('active', i === targetI);
+                let gm = document.getElementById('ph_gm_' + i);
+                if(gm) gm.classList.toggle('active', i === targetI);
+            }
+
+            if (p_players !== lastBuiltPlayers || p_turns !== lastBuiltTurns) {
+                buildTableSkeleton();
+                lastBuiltPlayers = p_players;
+                lastBuiltTurns = p_turns;
+            }
+
+            // ★ ボタンの進捗表示の更新
+            let inputsCount = Object.keys(gData?.inputs?.[`d${currentDay}`] || {}).length;
+            let attacksCount = Object.keys(gData?.attacks?.[`d${currentDay}`] || {}).length;
+            // 投票は生存者のみ：死者票を除いてカウントし、分母も生存者数に
+            const votesObj = gData?.votes?.[`d${currentDay}`] || {};
+            let votesCount = Object.keys(votesObj).filter(v => !isDeadSeat(v)).length;
+            const living = livingCount();
+
+            document.getElementById('btn_ph1_label').innerHTML = `行先入力<br>(${inputsCount}/${activeInputCount()})`;
+            document.getElementById('btn_ph2_label').innerHTML = `攻撃入力<br>(${attacksCount}/${living})`;
+            document.getElementById('btn_ph4_label').innerHTML = `追放投票<br>(${votesCount}/${living})`;
+
+            // 亡霊・図書室トグルの表示
+            const gBtn = document.getElementById('ghostToggle');
+            if(gBtn) gBtn.innerText = ghostOn() ? 'あり' : 'なし';
+            const lBtn = document.getElementById('libraryToggle');
+            if(lBtn) lBtn.innerText = libraryOn() ? 'あり' : 'なし';
+
+            renderIdentity();
+            updateTableData();   // gTotC/gTotX を更新
+            checkWin();          // 勝敗判定（決着なら winner を書き込み）
+            renderStatus();      // 進行・追放・勝利バナー
+            updateActionAvailability();
+            drawTimer();
+        }
+
+        function populateCurrentDaySelect() {
+            const sel = document.getElementById('currentDaySelect');
+            const sel2 = document.getElementById('reset_day_sel');
+            if(!sel || !sel2) return;
+            
+            let val = sel.value; let val2 = sel2.value;
+            sel.innerHTML = ''; sel2.innerHTML = '';
+            for(let i=1; i<=p_turns; i++) {
+                sel.add(new Option(i, i));
+                sel2.add(new Option(`Day ${i}`, i));
+            }
+            sel.value = currentDay; 
+            if(val2 && val2 <= p_turns) sel2.value = val2;
+        }
+
+        function changeCurrentDay(day) {
+            if(gameRef) gameRef.update({ 'game/day': parseInt(day), 'game/phase': 1 });
+        }
+
+        function changePlayers(d) { let n = p_players + d; if(n >= 1 && n <= 20) gameRef.update({'settings/players': n}); }
+        function changeTurns(d) { let n = p_turns + d; if(n >= 1 && n <= 15) gameRef.update({'settings/turns': n}); }
+        function changeNeedBridge(d) { let n = p_need + d; if(n >= 1 && n <= 10) gameRef.update({'settings/needBridge': n}); }
+        function saveSettings() { gameRef.update({'settings/targetC': parseInt(selC.value), 'settings/targetX': parseInt(selX.value)}); }
+
+        function setPhase(ph) {
+            gameRef.update({ 'game/phase': ph });
+        }
+
+        // タイマーの一時停止・再開を管理する関数
+        function toggleTimer(ph) {
+            if(!isMuted) initAudio(); 
+            lastBeepSec = 0; 
+
+            let tKeyStr = (ph === 1) ? `d${currentDay}` : `d${currentDay}_ph${ph}`;
+            let baseT = gData?.timers?.[tKeyStr];
+            let stopDiff = gData?.timers_stop?.[tKeyStr];
+            
+            let isRunning = (baseT > 0 && stopDiff == null);
+
+            let updates = { 'game/phase': ph };
+
+            if (isRunning) {
+                // 動いているので一時停止する
+                updates[`timers_stop/${tKeyStr}`] = Date.now() - baseT;
+            } else {
+                // 止まっているので再開または新規開始する
+                if (stopDiff > 0) {
+                    updates[`timers/${tKeyStr}`] = Date.now() - stopDiff;
+                    updates[`timers_stop/${tKeyStr}`] = null;
+                } else {
+                    updates[`timers/${tKeyStr}`] = Date.now();
+                    updates[`timers_stop/${tKeyStr}`] = null;
+                }
+            }
+            gameRef.update(updates);
+        }
+
+        function nextDay() {
+            if(confirm(`Day ${currentDay} を終了し、Day ${currentDay + 1} に進みますか？\n\nこの日のログは残ります。変更したい場合はプルダウンからDayを選択し、該当部分をやり直してください。\n※追放投票に関するデータ（投票数や投票先など）はリセットされます。`)) {
+                let nextD = currentDay + 1;
+                gameRef.update({
+                    'game/day': nextD,
+                    'game/phase': 1,
+                    [`votes/d${currentDay}`]: null,
+                    // 次のDayに進んだ時のみ、朝の議論のタイマーを自動開始する
+                    [`timers/d${nextD}`]: Date.now(),
+                    [`timers_stop/d${nextD}`]: null
+                });
+            }
+        }
+
+        function drawTimer() {
+            let targetI = currentPhase === 2.5 ? 3 : currentPhase;
+
+            for(let i=1; i<=4; i++) {
+                if (i === 3) continue; // フェーズ3はタイマーなし
+                let el = document.getElementById('displayTimer_' + i);
+                let btn = document.getElementById('btn_play_' + i);
+                if(!el || !btn) continue;
+
+                let tKeyStr = (i === 1) ? `d${currentDay}` : `d${currentDay}_ph${i}`;
+                let baseT = gData?.timers?.[tKeyStr];
+                let stopDiff = gData?.timers_stop?.[tKeyStr];
+
+                let isRunning = (baseT > 0 && stopDiff == null);
+                
+                // 動いていれば一時停止（⏸）、止まっていれば再生（▶）
+                btn.innerText = isRunning ? '⏸' : '▶';
+
+                if (!baseT && stopDiff == null) {
+                    el.innerHTML = ''; // 未開始
+                    continue;
+                }
+
+                // 各フェーズにおいて、全員が入力済みなら「完了」表記にする
+                if(i === 1) {
+                    let inputs = gData?.inputs?.[`d${currentDay}`] || {};
+                    let count = Object.keys(inputs).length;
+                    if(count > 0 && count >= activeInputCount()) {
+                        el.innerHTML = '完了';
+                        btn.innerText = '▶';
+                        continue;
+                    }
+                } else if(i === 2) {
+                    let attacks = gData?.attacks?.[`d${currentDay}`] || {};
+                    let count = Object.keys(attacks).length;
+                    if(count > 0 && count >= livingCount()) {
+                        el.innerHTML = '完了';
+                        btn.innerText = '▶';
+                        continue;
+                    }
+                } else if(i === 4) {
+                    let votes = gData?.votes?.[`d${currentDay}`] || {};
+                    let count = Object.keys(votes).filter(v => !isDeadSeat(v)).length;
+                    let need = livingCount();
+                    if(count > 0 && count >= need) {
+                        el.innerHTML = '完了';
+                        btn.innerText = '▶';
+                        continue;
+                    }
+                }
+
+                let diffMs = 0;
+                if (stopDiff != null) diffMs = stopDiff;
+                else if (baseT > 0) diffMs = Date.now() - baseT;
+
+                let diff = Math.floor(diffMs / 1000);
+                if (diff < 0) diff = 0; 
+
+                // アクティブフェーズで稼働中なら音を鳴らす
+                if (isRunning && i === targetI) {
+                    if (diff > lastBeepSec && diff > 0) {
+                        lastBeepSec = diff;
+                        if (i === 2) {
+                            if (diff % 30 === 0) playBeep('end');
+                            else if (diff % 10 === 0) playBeep('ten');
+                            else playBeep('normal');
+                        } else if (i === 1 || i === 4) {
+                            if (diff % 30 === 0) playBeep('end');
+                        }
+                    }
+                }
+
+                let m = Math.floor(diff / 60);
+                let s = ('0' + (diff % 60)).slice(-2);
+                el.innerHTML = `${m}:${s}`;
+            }
+        }
+
+        // ================= モーダル制御 =================
+        // 自分の座席が決まっていれば、各モーダルの「自分の名前」を固定して隠す
+        function applySeatToModal(selectId){
+            const sel = document.getElementById(selectId);
+            if(!sel) return;
+            const grp = sel.parentElement;
+            if(mySeat){
+                sel.value = mySeat;
+                if(grp) grp.style.display = 'none';
+            } else {
+                if(grp) grp.style.display = '';
+            }
+        }
+        function populateSelect(id, includeNone = false, noneText = "なし") {
+            const sel = document.getElementById(id);
+            if(!sel) return;
+            sel.innerHTML = '';
+            // 名前の初期値を「未選択」にする
+            sel.add(new Option("選択してください", ""));
+            
+            if(includeNone) sel.add(new Option(noneText, "none"));
+
+            for(let i=1; i<=p_players; i++) {
+                let name = gData?.names?.[`p${i}`] || `P${i}`;
+                sel.add(new Option(name, `p${i}`));
+            }
+        }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function getRoleBreakdown(n) {
+            if (n === 5) return { sailor: 1, pass: 2, charon: 1, hades: 1 };
+            if (n === 6) return { sailor: 2, pass: 2, charon: 1, hades: 1 };
+            if (n === 7) return { sailor: 2, pass: 3, charon: 2, hades: 0 };
+            if (n === 8) return { sailor: 2, pass: 3, charon: 2, hades: 1 };
+            if (n === 9) return { sailor: 2, pass: 4, charon: 2, hades: 1 };
+            
+            let charon = Math.floor(n / 4);
+            if (charon < 1) charon = 1;
+            let hades = (n >= 5 && n !== 7) ? 1 : 0;
+            let sailor = (n >= 6) ? 2 : 1;
+            let pass = n - charon - hades - sailor;
+            if (pass < 0) pass = 0;
+            return { sailor, pass, charon, hades };
+        }
+
+        function openRoleModal() {
+            document.getElementById('role_players_count').innerText = p_players;
+            
+            if (lastRolePlayers !== p_players) {
+                let b = getRoleBreakdown(p_players);
+                document.getElementById('cfg_sailor').value = b.sailor;
+                document.getElementById('cfg_pass').value = b.pass;
+                document.getElementById('cfg_charon').value = b.charon;
+                document.getElementById('cfg_hades').value = b.hades;
+                lastRolePlayers = p_players;
+            }
+
+            const st = document.getElementById('role_dist_status');
+            if(st) st.innerText = (gData && gData.roles) ? '役職は分配済みです。再分配すると全員の役職が変わります。' : 'まだ分配されていません。';
+
+            document.getElementById('roleModal').style.display = 'flex';
+        }
+
+        function distributeRoles() {
+            let s = parseInt(document.getElementById('cfg_sailor').value);
+            let p = parseInt(document.getElementById('cfg_pass').value);
+            let c = parseInt(document.getElementById('cfg_charon').value);
+            let h = parseInt(document.getElementById('cfg_hades').value);
+            let sum = s + p + c + h;
+
+            if (sum !== p_players) {
+                alert(`役職の合計人数（${sum}人）が、現在のプレイ人数（${p_players}人）と一致しません。\n内訳を修正してください。`);
+                return;
+            }
+
+            if(!confirm("役職を新しくシャッフルして全員に分配します。よろしいですか？")) return;
+            
+            let roles = [];
+            for(let i=0; i<s; i++) roles.push("航海士");
+            for(let i=0; i<p; i++) roles.push("乗客");
+            for(let i=0; i<c; i++) roles.push("カロン");
+            for(let i=0; i<h; i++) roles.push("ハデス");
+            
+            for(let i = roles.length - 1; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i + 1));
+                [roles[i], roles[j]] = [roles[j], roles[i]];
+            }
+            
+            let roleData = {};
+            for(let i=1; i<=p_players; i++) {
+                roleData[`p${i}`] = roles[i-1];
+            }
+            
+            gameRef.child('roles').set(roleData);
+            // 再分配時は脱落状態と勝敗もリセット
+            gameRef.update({ dead: null, 'game/winner': null });
+
+            const st = document.getElementById('role_dist_status');
+            if(st) st.innerText = "分配完了！各自、上部「あなた」で座席を選び『自分の役職を確認する』を押してください。";
+        }
+
+        // ===== 役職ごとの操作制限 =====
+        function setRadioLocked(ids, locked){
+            ids.forEach(id => { const el = document.getElementById(id); if(el) el.classList.toggle('radio-locked', locked); });
+        }
+        // 自分の役職に応じて行先/〇×をロック
+        function applyRoleLockToInput(){
+            const destIds = ['dest_souda','dest_danwa','dest_tosho'];
+            const cardIds = ['card_c','card_x'];
+            setRadioLocked(destIds, false); setRadioLocked(cardIds, false);
+            const note = document.getElementById('in_role_note');
+            const r = myRole();
+            let msg = '';
+            if(r === '航海士'){
+                selectRadio('dest','操舵'); selectRadio('card','C');
+                setRadioLocked(destIds, true); setRadioLocked(cardIds, true);
+                msg = '航海士：行先「操舵室」・カード「〇」で固定です。';
+            } else if(r === '乗客' || r === 'ハデス'){
+                selectRadio('card','C'); setRadioLocked(cardIds, true);
+                msg = (r==='ハデス'?'ハデス':'乗客') + '：カードは「〇」固定（×は出せません）。行先は自由。' + (r==='ハデス'?'操舵室は人間を利するため図書室が推奨。':'');
+            } else if(r === 'カロン'){
+                msg = 'カロン：行先・〇×ともに自由です。';
+            }
+            if(note) note.innerText = msg;
+        }
+        // 図書室オフなら行先「図書室」を隠す（選択中だった場合は操舵へ）
+        function applyLibraryVisibility(){
+            const tosho = document.getElementById('dest_tosho');
+            if(!tosho) return;
+            if(libraryOn()){
+                tosho.style.display = '';
+            } else {
+                tosho.style.display = 'none';
+                if(tempInput.dest === '図書') selectRadio('dest', '操舵');
+            }
+        }
+
+        // 生存/亡霊モードを自分の状態から自動決定（亡霊トグルは隠す）
+        function applyInputModeForSeat(){
+            const grp = document.getElementById('input_type_group');
+            const isDead = !!(mySeat && gData?.dead && gData.dead[mySeat]);
+            if(isDead && ghostOn()){
+                toggleInputType('ghost');
+            } else {
+                toggleInputType('alive');
+            }
+            if(grp) grp.style.display = mySeat ? 'none' : ''; // 座席未選択時のみ手動トグル
+        }
+
+        // 行先入力
+        function openInputModal() {
+            setPhase(1);
+            tempInput = { type: 'alive', dest: '操舵', card: 'C' };
+            toggleInputType('alive');
+            selectRadio('dest', '操舵');
+            selectRadio('card', 'C');
+
+            populateSelect('in_name');
+            applySeatToModal('in_name');
+
+            const ghostSel = document.getElementById('in_ghost_target');
+            ghostSel.innerHTML = '';
+            ghostSel.add(new Option("誰も妨害しない", "none"));
+            for(let i=1; i<=p_players; i++) {
+                let name = gData?.names?.[`p${i}`] || `P${i}`;
+                ghostSel.add(new Option(name, `p${i}`));
+            }
+
+            applyInputModeForSeat();                       // 生存/亡霊を自動決定
+            if(tempInput.type === 'alive'){
+                applyRoleLockToInput();                    // 役職で行先/〇×をロック
+                applyLibraryVisibility();                  // 図書室オフなら「図書」を隠す
+            }
+
+            document.getElementById('inputModal').style.display = 'flex';
+        }
+        function toggleInputType(type) {
+            tempInput.type = type;
+            document.getElementById('type_alive').classList.toggle('selected', type === 'alive');
+            document.getElementById('type_ghost').classList.toggle('selected', type === 'ghost');
+            document.getElementById('menu_alive').style.display = type === 'alive' ? 'block' : 'none';
+            document.getElementById('menu_ghost').style.display = type === 'ghost' ? 'block' : 'none';
+        }
+        function selectRadio(key, val) {
+            tempInput[key] = val;
+            if(key === 'dest') {
+                document.getElementById('dest_souda').classList.toggle('selected', val === '操舵');
+                document.getElementById('dest_danwa').classList.toggle('selected', val === '談話');
+                document.getElementById('dest_tosho').classList.toggle('selected', val === '図書');
+            } else {
+                document.getElementById('card_c').classList.toggle('selected', val === 'C');
+                document.getElementById('card_x').classList.toggle('selected', val === 'X');
+            }
+        }
+        function submitInput() {
+            const myName = document.getElementById('in_name').value;
+            if(!myName) {
+                alert("自分の名前を選択してください");
+                return;
+            }
+
+            // 役職制約の最終強制（誤操作対策）
+            const r0 = (mySeat && gData?.roles) ? gData.roles[mySeat] : null;
+            if(tempInput.type === 'alive'){
+                if(r0 === '航海士'){ tempInput.dest = '操舵'; tempInput.card = 'C'; }
+                else if(r0 === '乗客' || r0 === 'ハデス'){ tempInput.card = 'C'; }
+                if(!libraryOn() && tempInput.dest === '図書') tempInput.dest = '操舵'; // 図書室オフ
+            }
+
+            let data = { type: tempInput.type, time: Date.now() };
+            if(tempInput.type === 'alive') {
+                data.dest = tempInput.dest; data.card = tempInput.card;
+            } else {
+                let tgt = document.getElementById('in_ghost_target').value;
+                data.target = tgt === "none" ? "" : tgt;
+            }
+            gameRef.child(`inputs/d${currentDay}/${myName}`).set(data);
+            closeModal('inputModal');
+        }
+
+        // 攻撃入力
+        function openAttackModal() {
+            setPhase(2);
+            selectAtkRole(false);
+            populateSelect('atk_name');
+            applySeatToModal('atk_name');
+
+            // 役職が分かっていればカロン判定を自動化し、手動トグルを隠す
+            const r = myRole();
+            const roleGroup = document.getElementById('atk_role_group');
+            const autoNote = document.getElementById('atk_role_auto_note');
+            if(mySeat && r){
+                selectAtkRole(r === 'カロン');
+                if(roleGroup) roleGroup.style.display = 'none';
+                if(autoNote){
+                    autoNote.style.display = 'block';
+                    autoNote.innerText = (r === 'カロン')
+                        ? 'あなたはカロンです。攻撃する場合のみ対象を選んでください（談話室を伏せた日のみ攻撃可）。'
+                        : 'あなたはカロンではありません。そのまま「決定する」を押してください。';
+                }
+            } else {
+                if(roleGroup) roleGroup.style.display = '';
+                if(autoNote) autoNote.style.display = 'none';
+            }
+
+            const atkSel = document.getElementById('atk_target');
+            atkSel.innerHTML = '';
+            atkSel.add(new Option("誰も攻撃しない", "none"));
+            for(let i=1; i<=p_players; i++) {
+                let name = gData?.names?.[`p${i}`] || `P${i}`;
+                atkSel.add(new Option(name, `p${i}`));
+            }
+
+            document.getElementById('attackModal').style.display = 'flex';
+        }
+        function selectAtkRole(isCharonFlag) {
+            isCharon = isCharonFlag;
+            document.getElementById('role_no').classList.toggle('selected', !isCharonFlag);
+            document.getElementById('role_yes').classList.toggle('selected', isCharonFlag);
+            document.getElementById('atk_target_group').style.display = isCharonFlag ? 'block' : 'none';
+        }
+        function submitAttack() {
+            const myName = document.getElementById('atk_name').value;
+            if(!myName) {
+                alert("自分の名前を選択してください");
+                return;
+            }
+
+            let target = document.getElementById('atk_target').value;
+            if (target === "none") target = "";
+
+            if (isCharon && target !== "") {
+                let myInput = gData?.inputs?.[`d${currentDay}`]?.[myName];
+                if (myInput && myInput.type === 'alive') {
+                    if (myInput.dest === '操舵' || myInput.dest === '図書') {
+                        alert(`この日の行先に談話室を選んでいたときのみ攻撃可能です。攻撃対象を「誰も攻撃しない」にしてください`);
+                        return;
+                    }
+                }
+            }
+
+            let data = { isCharon: isCharon, target: target };
+            gameRef.child(`attacks/d${currentDay}/${myName}`).set(data);
+            closeModal('attackModal');
+        }
+
+        // 追放投票
+        function openVoteModal() {
+            // 脱落者（亡霊を含む）は投票できない
+            if(mySeat && isDeadSeat(mySeat)){
+                alert('脱落者（亡霊を含む）は投票できません。');
+                return;
+            }
+            setPhase(4);
+            populateSelect('vote_name');
+            applySeatToModal('vote_name');
+
+            selectVoteType(false); // 初期設定：棄権する
+
+            const voteSel = document.getElementById('vote_target');
+            voteSel.innerHTML = '';
+            voteSel.add(new Option("選択してください", ""));
+            for(let i=1; i<=p_players; i++) {
+                if(isDeadSeat(`p${i}`)) continue; // 脱落者は追放対象にしない
+                let name = gData?.names?.[`p${i}`] || `P${i}`;
+                voteSel.add(new Option(name, `p${i}`));
+            }
+
+            document.getElementById('voteModal').style.display = 'flex';
+        }
+        
+        function selectVoteType(doVote) {
+            isVoting = doVote;
+            document.getElementById('vote_type_skip').classList.toggle('selected', !doVote);
+            document.getElementById('vote_type_do').classList.toggle('selected', doVote);
+            document.getElementById('vote_target_group').style.display = doVote ? 'block' : 'none';
+        }
+
+        function submitVote() {
+            const myName = document.getElementById('vote_name').value;
+            if(!myName) {
+                alert("自分の名前を選択してください");
+                return;
+            }
+            if(isDeadSeat(myName)){
+                alert('脱落者（亡霊を含む）は投票できません。');
+                return;
+            }
+
+            let target = "none";
+            if (isVoting) {
+                target = document.getElementById('vote_target').value;
+                if (!target) {
+                    alert("追放する相手を選択してください");
+                    return;
+                }
+            }
+
+            gameRef.child(`votes/d${currentDay}/${myName}`).set(target); 
+            
+            closeModal('voteModal');
+        }
+
+        // ================= テーブル構築 =================
+        function saveName(p) {
+            const val = document.getElementById(`name_${p}`).value;
+            gameRef.child(`names/p${p}`).set(val);
+        }
+
+        function buildTableSkeleton() {
+            const tHead = document.getElementById('tHead');
+            const tBody = document.getElementById('tBody');
+            
+            let hHTML = '<tr><th class="top-left-header" style="font-size:9px;">名前<br><span class="hint-text">(変更可)</span></th>';
+            for (let t = 1; t <= p_turns; t++) hHTML += `<th class="top-header">Day${t}</th>`;
+            hHTML += '</tr>';
+            tHead.innerHTML = hHTML;
+
+            let bHTML = '';
+            for (let p = 1; p <= p_players; p++) {
+                bHTML += `<tr><th class="player-name">
+                    <div class="name-container">
+                        <div class="name-center">
+                            <input type="text" id="name_${p}" class="name-input" onchange="saveName(${p})">
+                        </div>
+                        <div class="vote-info-row">
+                            <div class="vote-count-left" id="vote_count_${p}"></div>
+                            <div class="vote-target-right" id="vote_target_${p}"></div>
+                        </div>
+                    </div>
+                </th>`;
+                for (let t = 1; t <= p_turns; t++) {
+                    bHTML += `<td class="cell" id="cell_${p}_${t}"></td>`;
+                }
+                bHTML += '</tr>';
+            }
+            
+            bHTML += `<tr class="row-pt"><th class="player-name" style="font-size:10px;">〇：✕<br><span class="val-col" style="font-size:8px;">(枚数)</span></th>`;
+            for (let t = 1; t <= p_turns; t++) bHTML += `<td class="cell cell-pt" id="count_ratio_${t}">-</td>`;
+            bHTML += '</tr>';
+            
+            bHTML += `<tr class="row-pt"><th class="player-name" style="font-size:10px;">〇：✕<br><span class="val-col" style="font-size:8px;">(pt)</span></th>`;
+            for (let t = 1; t <= p_turns; t++) bHTML += `<td class="cell cell-pt" id="pt_ratio_${t}">-</td>`;
+            bHTML += '</tr>';
+            
+            tBody.innerHTML = bHTML;
+        }
+
+        function updateTableData() {
+            let totalC = 0; let totalX = 0;
+            let killedSeats = {}; // 攻撃で撃破された座席（dead へ永続化する）
+
+            let voteCounts = {};
+            let voteActions = {};
+
+            if(gData?.votes?.[`d${currentDay}`]) {
+                Object.entries(gData.votes[`d${currentDay}`]).forEach(([voter, target]) => {
+                    voteActions[voter] = target;
+                    if(target !== "none") {
+                        voteCounts[target] = (voteCounts[target] || 0) + 1;
+                    }
+                });
+            }
+
+            for (let p = 1; p <= p_players; p++) {
+                let pKey = `p${p}`;
+                let nameInput = document.getElementById(`name_${p}`);
+                let voteCountDiv = document.getElementById(`vote_count_${p}`);
+                let voteTargetDiv = document.getElementById(`vote_target_${p}`);
+                if(!nameInput) continue;
+                
+                if (document.activeElement !== nameInput) {
+                    nameInput.value = gData?.names?.[pKey] || `P${p}`;
+                }
+
+                // 脱落者の見た目（取り消し線）
+                const nameTh = nameInput.closest('th');
+                if(nameTh) nameTh.classList.toggle('player-dead', !!(gData?.dead && gData.dead[pKey]));
+
+                if(voteCountDiv) {
+                    let vCount = voteCounts[pKey] || 0;
+                    voteCountDiv.innerText = vCount > 0 ? `${vCount}票` : '';
+                }
+
+                if(voteTargetDiv) {
+                    let action = voteActions[pKey];
+                    if(action === "none") {
+                        voteTargetDiv.className = "vote-target-right vote-target-blue";
+                        voteTargetDiv.innerText = "棄権";
+                    } else if(action) {
+                        let targetName = gData?.names?.[action] || action;
+                        voteTargetDiv.className = "vote-target-right vote-target-red";
+                        voteTargetDiv.innerText = `→${targetName}`;
+                    } else {
+                        voteTargetDiv.innerText = "";
+                    }
+                }
+            }
+
+            for (let t = 1; t <= p_turns; t++) {
+                let countRatioEl = document.getElementById(`count_ratio_${t}`);
+                let ptRatioEl = document.getElementById(`pt_ratio_${t}`);
+                if(!countRatioEl || !ptRatioEl) continue;
+
+                let isPub = gData?.game?.phase >= 3 && t === currentDay; 
+                if (t < currentDay) isPub = true; 
+
+                let inputs = gData?.inputs?.[`d${t}`] || {};
+                let attacks = gData?.attacks?.[`d${t}`] || {};
+                
+                // 生存者・亡霊を問わず、timeが存在するものをすべて抽出してソート
+                let allInputs = [];
+                for (let p = 1; p <= p_players; p++) {
+                    let d = inputs[`p${p}`];
+                    if(d && d.time) {
+                        allInputs.push({ pKey: `p${p}`, time: d.time });
+                    }
+                }
+                allInputs.sort((a,b) => a.time - b.time);
+                
+                let startT = gData?.timers?.[`d${t}`] || 0; 
+                let rankData = {};
+                allInputs.forEach((item, idx) => {
+                    let r = idx + 1;
+                    let sfx = (r===1)?'st':(r===2)?'nd':(r===3)?'rd':'th';
+                    let rInfo = { rank: `${r}${sfx}`, timeStr: '' };
+                    
+                    if(startT > 0 && item.time > startT) {
+                        let diff = Math.floor((item.time - startT)/1000);
+                        if(diff >= 0) {
+                            let m = Math.floor(diff/60); let s = ('0' + (diff%60)).slice(-2);
+                            rInfo.timeStr = `${m}m${s}s`;
+                        }
+                    }
+                    rankData[item.pKey] = rInfo;
+                });
+
+                let hasAnyInput = Object.keys(inputs).length > 0;
+
+                if (!isPub) {
+                    for (let p = 1; p <= p_players; p++) {
+                        let el = document.getElementById(`cell_${p}_${t}`);
+                        if(!el) continue;
+                        
+                        if (!hasAnyInput) {
+                            el.className = 'cell';
+                            el.innerHTML = `<div class="cell-content"><div class="cell-main">・</div></div>`;
+                            continue;
+                        }
+
+                        el.className = 'cell'; 
+                        let rD = rankData[`p${p}`];
+                        let extra = '';
+                        if(rD && rD.rank) {
+                            extra = `<div class="cell-info"><span class="state-check">✔</span> ${rD.rank} ${rD.timeStr}</div>`;
+                        } else if(inputs[`p${p}`]) {
+                            extra = `<div class="cell-info"><span class="state-check">✔</span></div>`;
+                        } else {
+                            extra = `<div class="cell-main">・</div>`;
+                        }
+                        
+                        el.innerHTML = `<div class="cell-content">${extra}</div>`;
+                    }
+                    
+                    countRatioEl.innerText = '-'; ptRatioEl.innerText = '-';
+                    continue; 
+                }
+
+                try {
+                    let pData = {};
+
+                    for (let p = 1; p <= p_players; p++) {
+                        let el = document.getElementById(`cell_${p}_${t}`);
+                        if(!hasAnyInput) {
+                            if(el) { el.className = 'cell'; el.innerHTML = `<div class="cell-content"><div class="cell-main">・</div></div>`; }
+                            continue;
+                        }
+                        
+                        let d = inputs[`p${p}`];
+                        if(!d) {
+                            d = { type: 'alive', dest: '談話', card: 'C', time: null }; 
+                        }
+                        
+                        let initialDest = '';
+                        if (d.type === 'alive') {
+                            initialDest = d.dest;
+                        } else {
+                            if (d.target) {
+                                let tName = gData?.names?.[d.target] || d.target;
+                                initialDest = `${tName}を妨害`;
+                            } else {
+                                initialDest = '妨害なし';
+                            }
+                        }
+
+                        pData[`p${p}`] = { ...d, finalDest: initialDest, status: '' };
+                        
+                        if(rankData[`p${p}`]) {
+                            pData[`p${p}`].rank = rankData[`p${p}`].rank;
+                            pData[`p${p}`].timeStr = rankData[`p${p}`].timeStr;
+                        }
+                    }
+
+                    if (!hasAnyInput) {
+                        countRatioEl.innerText = '-'; ptRatioEl.innerText = '-';
+                        continue;
+                    }
+
+                    for (let p = 1; p <= p_players; p++) {
+                        let d = pData[`p${p}`];
+                        if(d.type === 'ghost' && d.target && pData[d.target]) {
+                            pData[d.target].finalDest = '談話(上書き)';
+                        }
+                    }
+
+                    Object.keys(attacks).forEach(karon => {
+                        if (attacks[karon].isCharon) {
+                            let target = attacks[karon].target;
+                            if(target && pData[target]) {
+                                let tDest = pData[target].finalDest;
+                                if(tDest.includes('談話')) {
+                                    if(pData[karon]) pData[karon].status = '💀攻撃を失敗'; 
+                                    pData[target].status = '攻撃された';
+                                } else if(tDest === '操舵' || tDest === '図書') {
+                                    pData[target].status = '💀攻撃された'; 
+                                }
+                            }
+                        }
+                    });
+
+                    let validC_Count = 0; let validX_Count = 0;
+                    
+                    for (let p = 1; p <= p_players; p++) {
+                        let d = pData[`p${p}`];
+                        let el = document.getElementById(`cell_${p}_${t}`);
+                        if(!el) continue;
+                        
+                        let bgClass = '';
+                        let mainText = d.finalDest;
+
+                        if(d.status.includes('💀')) {
+                            bgClass = 'state-dead';
+                            killedSeats[`p${p}`] = true; // 撃破死を記録
+                        } else {
+                            if(mainText.includes('操舵')) bgClass = 'state-souda';
+                            if(mainText.includes('談話')) bgClass = 'state-danwa';
+                            if(mainText.includes('図書')) bgClass = 'state-tosho';
+                            if(d.type === 'ghost') bgClass = 'state-bourei'; 
+                        }
+
+                        if(d.status) {
+                            mainText = `${mainText} | ${d.status}`;
+                        }
+
+                        let extra = '';
+                        if(d.rank) {
+                            extra = `<div class="cell-info">${d.rank} ${d.timeStr}</div>`;
+                        }
+
+                        el.className = `cell ${bgClass}`;
+                        el.innerHTML = `<div class="cell-content">
+                            <div class="cell-main">${mainText}</div>
+                            ${extra}
+                        </div>`;
+
+                        if(d.finalDest === '操舵' && !d.status.includes('💀')) {
+                            if(d.card === 'X') validX_Count++;
+                            else validC_Count++;
+                        }
+                    }
+
+                    let sumSouda = validC_Count + validX_Count;
+                    let rC = 0; let rX = 0;
+                    
+                    if(sumSouda > 0) {
+                        if(sumSouda < p_need) {
+                            rX = 1;
+                        } else {
+                            if(validX_Count > 0) {
+                                rX = validX_Count;
+                            } else {
+                                rC = validC_Count;
+                            }
+                        }
+                    }
+
+                    if (sumSouda > 0 && sumSouda < p_need) {
+                        countRatioEl.innerHTML = `<span class="val-col" style="font-size:10px; font-weight:bold;">人数不足</span>`;
+                    } else {
+                        countRatioEl.innerHTML = `<span class="val-c">${validC_Count}</span><span class="val-col">:</span><span class="val-x">${validX_Count}</span>`;
+                    }
+                    
+                    ptRatioEl.innerHTML = `<span class="val-c">${rC}</span><span class="val-col">:</span><span class="val-x">${rX}</span>`;
+
+                    totalC += rC; totalX += rX;
+
+                } catch(e) {
+                    console.error("Table Update Error:", e);
+                }
+            }
+
+            gTotC = totalC; gTotX = totalX;
+            drawG(totalC, totalX);
+
+            // 撃破された人を脱落(dead)として永続化（勝敗・投票・観戦に正しく反映）
+            if(gameRef){
+                let upd = {};
+                Object.keys(killedSeats).forEach(s => { if(!(gData?.dead && gData.dead[s])) upd[`dead/${s}`] = true; });
+                if(Object.keys(upd).length) gameRef.update(upd);
+            }
+        }
+
+        function drawG(curC, curX) {
+            const tarC = parseInt(selC.value); const tarX = parseInt(selX.value);
+            document.getElementById('txtCircle').innerText = curC;
+            document.getElementById('txtCross').innerText = curX;
+            const f = (id, cur, tar, cls) => {
+                const g = document.getElementById(id); g.innerHTML = '';
+                for(let i=0; i<Math.max(tar, cur); i++) {
+                    let b = document.createElement('div');
+                    b.className = 'gauge-box' + (i < cur ? ' ' + cls : '');
+                    g.appendChild(b);
+                }
+            };
+            f('gaugeCircle', curC, tarC, 'filled-circle');
+            f('gaugeCross', curX, tarX, 'filled-cross');
+        }
+
+        // ===== 追放・勝敗・進行ステータス =====
+        function nameOf(seat){ return (gData?.names && gData.names[seat]) || (seat ? seat.toUpperCase() : seat); }
+
+        // 投票内訳テキスト（生存者の票のみ）
+        function buildVoteTallyText(day){
+            const votes = gData?.votes?.[`d${day}`] || {};
+            let counts = {}, abstain = 0;
+            Object.entries(votes).forEach(([voter, target]) => {
+                if(isDeadSeat(voter)) return;          // 死者票は無効
+                if(!target || target === 'none') abstain++;
+                else counts[target] = (counts[target] || 0) + 1;
+            });
+            let lines = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([t,c]) => `・${nameOf(t)}：${c}票`);
+            if(abstain) lines.push(`・棄権：${abstain}`);
+            return lines.length ? lines.join('\n') : '（まだ投票がありません）';
+        }
+
+        // 投票結果をダイアログ表示（読み取り専用）
+        function showVoteResults(){
+            const res = computeExile(currentDay);
+            let msg = `【Day${currentDay} 投票結果】\n${buildVoteTallyText(currentDay)}\n\n`;
+            msg += res.exile
+                ? `→ 最多：${nameOf(res.exile)}（${res.max}票／生存${res.living}人）が追放対象です。`
+                : (res.tie ? '→ 同数のため追放はありません。' : '→ 過半数に達していないため追放はありません。');
+            alert(msg);
+        }
+
+        // その日の投票を集計し、追放対象（過半数で単独最多）を求める
+        function computeExile(day){
+            const votes = gData?.votes?.[`d${day}`] || {};
+            const dead = gData?.dead || {};
+            let living = [];
+            for(let i=1;i<=p_players;i++){ if(!dead[`p${i}`]) living.push(`p${i}`); }
+            let counts = {};
+            Object.entries(votes).forEach(([voter, target]) => {
+                if(dead[voter]) return;                 // 亡霊・脱落者の票は無効
+                if(target && target !== 'none') counts[target] = (counts[target]||0) + 1;
+            });
+            let max = 0, top = [];
+            Object.entries(counts).forEach(([t,c]) => { if(c>max){max=c;top=[t];} else if(c===max){top.push(t);} });
+            const half = living.length / 2; // 「生存者の半数以上」
+            if(top.length === 1 && max > 0 && max >= half){
+                return { exile: top[0], max, living: living.length, tie: false };
+            }
+            return { exile: null, max, living: living.length, tie: top.length > 1 };
+        }
+
+        function applyExile(){
+            if(!gameRef) return;
+            const res = computeExile(currentDay);
+            if(!res.exile){ alert(`【Day${currentDay} 投票結果】\n${buildVoteTallyText(currentDay)}\n\n` + (res.tie ? '→ 同数のため追放はありません。' : '→ 過半数に達していないため追放はありません。')); return; }
+            const msg = `【Day${currentDay} 投票結果】\n${buildVoteTallyText(currentDay)}\n\n→ ${nameOf(res.exile)}（${res.max}票／生存${res.living}人）を追放します。よろしいですか？`;
+            if(!confirm(msg)) return;
+            gameRef.update({ [`dead/${res.exile}`]: true });
+        }
+
+        // 勝敗判定（決着なら game/winner を書き込む）
+        function checkWin(){
+            if(!gData || !gData.roles) return;
+            if(gData.game && gData.game.winner) return; // 既に決着
+            const roles = gData.roles, dead = gData.dead || {};
+            let livingCount = 0, charonAlive = 0, charonFacAlive = 0, charonTotal = 0;
+            for(let i=1;i<=p_players;i++){
+                const s = `p${i}`, r = roles[s];
+                if(r === 'カロン') charonTotal++;
+                if(!dead[s]){
+                    livingCount++;
+                    if(r === 'カロン') charonAlive++;
+                    if(factionOf(r) === 'カロン') charonFacAlive++;
+                }
+            }
+            const targetC = parseInt(selC.value) || 12, targetX = parseInt(selX.value) || 5;
+            let w = null;
+            if(charonTotal > 0 && charonAlive === 0) w = '人間';                    // カロン全滅
+            else if(livingCount > 0 && charonFacAlive * 2 >= livingCount) w = 'カロン'; // 生存者の過半数がカロン陣営
+            else if(gTotC >= targetC) w = '人間';                                    // 〇ポイント到達
+            else if(gTotX >= targetX) w = 'カロン';                                  // ×ポイント到達
+            if(w) gameRef.update({ 'game/winner': w });
+        }
+
+        // 進行ステータス／追放結果／勝利バナー
+        function renderStatus(){
+            const bar = document.getElementById('statusBar');
+            if(!bar) return;
+            const winner = gData?.game?.winner;
+            if(winner){
+                const cls = winner === '人間' ? 'win-human' : 'win-charon';
+                bar.innerHTML = `<div class="win-banner ${cls}">🏆 ${winner}陣営の勝利！</div>`;
+                bar.style.display = 'flex';
+                return;
+            }
+            let parts = [];
+            const dead = !!(mySeat && gData?.dead && gData.dead[mySeat]);
+            if(dead){
+                parts.push(`<span class="spectator-tag">あなたは脱落${ghostOn() ? '（亡霊：行先の上書きのみ可）' : '（観戦中）'}</span>`);
+            }
+            if(currentPhase === 4){
+                const res = computeExile(currentDay);
+                let txt = res.exile ? `最多 ${nameOf(res.exile)}（${res.max}票/生存${res.living}）`
+                                     : (res.tie ? '同数（追放なし）' : '過半数未満（追放なし）');
+                parts.push(`<span class="status-chip">夜の追放：${txt}</span>`);
+                parts.push(`<button class="status-btn" style="background:var(--pt-bg);color:var(--text-main);border:1px solid var(--border);" onclick="showVoteResults()">結果を見る</button>`);
+                if(res.exile && !(gData?.dead && gData.dead[res.exile])){
+                    parts.push(`<button class="status-btn" onclick="applyExile()">${nameOf(res.exile)} を追放する</button>`);
+                }
+            } else {
+                const hints = { 1:'朝：各自「行先入力」', 2:'カロン密談：各自「攻撃入力」', 2.5:'昼：「結果公開」へ', 3:'昼の結果公開。次は夜の追放へ' };
+                if(hints[currentPhase]) parts.push(`<span class="status-msg">${hints[currentPhase]}</span>`);
+            }
+            if(parts.length){ bar.innerHTML = parts.join(''); bar.style.display = 'flex'; }
+            else { bar.style.display = 'none'; }
+        }
+
+        // 自分の状態に応じて操作ボタンの可否を切り替え
+        function updateActionAvailability(){
+            const winner = gData?.game?.winner;
+            const dead = !!(mySeat && gData?.dead && gData.dead[mySeat]);
+            const ghost = dead && ghostOn();
+            const set = (id, disabled) => {
+                const el = document.getElementById(id);
+                if(!el) return;
+                const btn = el.closest('.btn-action') || el;
+                btn.style.opacity = disabled ? '0.4' : '';
+                btn.style.pointerEvents = disabled ? 'none' : '';
+            };
+            // 行先(ph1)・攻撃(ph2)・投票(ph4)
+            if(winner){ set('btn_ph1_label', true); set('btn_ph2_label', true); set('btn_ph4_label', true); return; }
+            if(!dead){ set('btn_ph1_label', false); set('btn_ph2_label', false); set('btn_ph4_label', false); }
+            else if(ghost){ set('btn_ph1_label', false); set('btn_ph2_label', true); set('btn_ph4_label', true); } // 亡霊は上書きのみ
+            else { set('btn_ph1_label', true); set('btn_ph2_label', true); set('btn_ph4_label', true); }            // 観戦
+        }
+
+        function resetSingleDay() {
+            const day = document.getElementById('reset_day_sel').value;
+            if(confirm(`Day ${day} の入力・攻撃・投票の記録を消去しますか？`)) {
+                gameRef.update({
+                    [`inputs/d${day}`]: null,
+                    [`attacks/d${day}`]: null,
+                    [`votes/d${day}`]: null,
+                    [`timers/d${day}`]: null,
+                    [`timers_stop/d${day}`]: null,
+                    [`timers/d${day}_ph2`]: null,
+                    [`timers_stop/d${day}_ph2`]: null,
+                    [`timers/d${day}_ph4`]: null,
+                    [`timers_stop/d${day}_ph4`]: null
+                });
+                
+                for (let p = 1; p <= p_players; p++) {
+                    let el = document.getElementById(`cell_${p}_${day}`);
+                    if(el) {
+                        el.className = 'cell';
+                        el.innerHTML = `<div class="cell-content"><div class="cell-main">・</div></div>`;
+                    }
+                }
+                document.getElementById(`count_ratio_${day}`).innerText = '-';
+                document.getElementById(`pt_ratio_${day}`).innerText = '-';
+            }
+        }
+
+        function resetBoard() { 
+            if(confirm('すべての記録を白紙に戻しますか？\n(各種設定は維持されます)')) {
+                gameRef.update({ inputs: null, attacks: null, votes: null, timers: null, timers_stop: null, roles: null, dead: null, 'game/winner': null, 'game/day': 1, 'game/phase': 1 });
+            }
+        }
+    </script>
+</body>
+</html>
