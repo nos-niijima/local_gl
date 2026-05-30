@@ -351,7 +351,7 @@
                         <div class="stepper"><button onclick="changePlayers(-1)">−</button><span class="val" id="displayPlayers">5</span><button onclick="changePlayers(1)">＋</button></div>
                     </div>
                     <div class="setting">
-                        <span class="setting-label">操舵必要</span>
+                        <span class="setting-label">運転必要</span>
                         <div class="stepper"><button onclick="changeNeedBridge(-1)">−</button><span class="val" id="displayNeedBridge">2</span><button onclick="changeNeedBridge(1)">＋</button></div>
                     </div>
                     <div class="setting">
@@ -363,8 +363,8 @@
                         <button class="toggle on" id="ghostToggle" onclick="toggleGhost()" title="脱落者が亡霊になるか">あり</button>
                     </div>
                     <div class="setting">
-                        <span class="setting-label">図書室</span>
-                        <button class="toggle on" id="libraryToggle" onclick="toggleLibrary()" title="図書室を使うか">あり</button>
+                        <span class="setting-label">占い部屋</span>
+                        <button class="toggle on" id="libraryToggle" onclick="toggleLibrary()" title="占い部屋を使うか">あり</button>
                     </div>
                 </div>
                 <div class="score-visuals">
@@ -412,7 +412,7 @@
                             
                             <td class="pt-head" id="ph_head_2">
                                 <div class="ph-title">
-                                    <span>カロン密談</span>
+                                    <span>ゴースト密談</span>
                                     <div class="timer-wrap">
                                         <button class="btn-play" onclick="toggleTimer(2)" title="タイマー開始/停止" id="btn_play_2">▶</button>
                                         <span id="displayTimer_2" class="timer-text"></span>
@@ -444,7 +444,7 @@
                         <tr>
                             <td class="pt-cell" id="ph_pl_1"><button class="btn-action" onclick="openInputModal()" id="btn_ph1_label">行先入力<br>(0/5)</button></td>
                             <td class="pt-cell" id="ph_pl_2"><button class="btn-action" onclick="openAttackModal()" id="btn_ph2_label">攻撃入力<br>(0/5)</button></td>
-                            <td class="pt-cell" id="ph_gm_3"><button class="btn-action" onclick="setPhase(3)">結果公開<br>(GMのみ)</button></td>
+                            <td class="pt-cell" id="ph_gm_3"><button class="btn-action" onclick="setPhase(3)" id="btn_ph3_label">結果公開<br>(GMのみ)</button></td>
                             <td class="pt-cell" id="ph_pl_4"><button class="btn-action" onclick="openVoteModal()" id="btn_ph4_label">追放投票<br>(0/5)</button></td>
                         </tr>
                     </tbody>
@@ -490,7 +490,7 @@
                 <div class="manual-text">
                     <ul>
                         <li>参加者全員で共通の「PASS（最大6桁の数字）」を決めて入力してください。同じPASSを入力した人同士で画面が同期されます（データは24時間で消去）。</li>
-                        <li><b>プレイ人数や操舵必要人数、Day数、勝利ポイントは手動で変更してください。</b></li>
+                        <li><b>プレイ人数や運転必要人数、Day数、勝利ポイントは手動で変更してください。</b></li>
                         <li>「ダーク/ライト」ボタンで画面の色を変更でき、「🔇/🔊」ボタンでタイマー音のオン/オフを切り替えられます。</li>
                     </ul>
                 </div>
@@ -510,7 +510,7 @@
                 <summary class="manual-summary">3. ゲームの進行と入力</summary>
                 <div class="manual-text">
                     <ul>
-                        <li>誰か１人をプレイヤー兼ゲームマスターに決めてください。その人はプレイヤーとして参加しながら、ゲーム開始前の役職確認やカロンの密談の際の声掛け、結果公開ボタンのタップを担当してください。</li>
+                        <li>誰か１人をプレイヤー兼ゲームマスターに決めてください。その人はプレイヤーとして参加しながら、ゲーム開始前の役職確認やゴーストの密談の際の声掛け、結果公開ボタンのタップを担当してください。</li>
                         <li>各フェーズの「▶」を押すとタイマーが開始します（全員のスマホで動きます）。</li>
                         <li>「行先入力」「攻撃入力」「追放投票」は、各自のスマホから個別に入力します。</li>
                         <li>全員の入力後、「結果公開」ボタンを押すと、生死や獲得ポイントが自動計算されます。</li>
@@ -523,7 +523,7 @@
                 <summary class="manual-summary">4. 表（テーブル）の見方</summary>
                 <div class="manual-text">
                     <ul>
-                        <li>各プレイヤーがどこへ行ったか、カロンの攻撃を受けたか（💀）が色付きで記録されます。</li>
+                        <li>各プレイヤーがどこへ行ったか、ゴーストの攻撃を受けたか（💀）が色付きで記録されます。</li>
                         <li>下部の「○pt / ✕pt」にはその日の獲得数が表示され、設定した勝利ポイントのゲージが貯まっていきます。</li>
                     </ul>
                 </div>
@@ -569,8 +569,8 @@
                 <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; align-items:center;">
                     <div style="font-size:11px; font-weight:bold; color:var(--text-main);">航海士 <select id="cfg_sailor" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
                     <div style="font-size:11px; font-weight:bold; color:var(--text-main);">乗客 <select id="cfg_pass" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
-                    <div style="font-size:11px; font-weight:bold; color:var(--text-main);">カロン <select id="cfg_charon" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
-                    <div style="font-size:11px; font-weight:bold; color:var(--text-main);">ハデス <select id="cfg_hades" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
+                    <div style="font-size:11px; font-weight:bold; color:var(--text-main);">ゴースト <select id="cfg_charon" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
+                    <div style="font-size:11px; font-weight:bold; color:var(--text-main);">狂人 <select id="cfg_hades" style="font-size:11px; padding:2px; font-weight:bold;"></select></div>
                 </div>
             </div>
 
@@ -612,9 +612,9 @@
                 <div class="form-group">
                     <span class="form-label">行先</span>
                     <div class="radio-group">
-                        <div class="radio-btn selected" id="dest_souda" onclick="selectRadio('dest', '操舵')">操舵室</div>
-                        <div class="radio-btn" id="dest_danwa" onclick="selectRadio('dest', '談話')">談話室</div>
-                        <div class="radio-btn" id="dest_tosho" onclick="selectRadio('dest', '図書')">図書室</div>
+                        <div class="radio-btn selected" id="dest_souda" onclick="selectRadio('dest', '運転')">運転室</div>
+                        <div class="radio-btn" id="dest_danwa" onclick="selectRadio('dest', 'ラウンジ')">ラウンジ</div>
+                        <div class="radio-btn" id="dest_tosho" onclick="selectRadio('dest', '占い')">占い部屋</div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -628,7 +628,7 @@
 
             <div id="menu_ghost" style="display: none;">
                 <div class="form-group">
-                    <span class="form-label">妨害して「談話室」に強制させる相手<br><span style="font-size:8px; font-weight:normal;">（前日に妨害された人は妨害してはいけません）</span></span>
+                    <span class="form-label">妨害して「ラウンジ」に強制させる相手<br><span style="font-size:8px; font-weight:normal;">（前日に妨害された人は妨害してはいけません）</span></span>
                     <select id="in_ghost_target" class="form-select"></select>
                 </div>
             </div>
@@ -641,8 +641,8 @@
     <!-- モーダル 攻撃入力 -->
     <div id="attackModal" class="modal">
         <div class="modal-content">
-            <p class="modal-title">カロンの攻撃</p>
-            <p class="modal-note">※全員がこの画面から入力してください。<br>（カロンではない人はそのまま決定を押す）</p>
+            <p class="modal-title">ゴーストの攻撃</p>
+            <p class="modal-note">※全員がこの画面から入力してください。<br>（ゴーストではない人はそのまま決定を押す）</p>
             
             <div class="form-group">
                 <span class="form-label">自分の名前</span>
@@ -654,14 +654,21 @@
             <div class="form-group" id="atk_role_group">
                 <span class="form-label">あなたの役職</span>
                 <div class="radio-group">
-                    <div class="radio-btn selected" id="role_no" onclick="selectAtkRole(false)" style="font-size:9px; display:flex; align-items:center; justify-content:center; padding:2px; line-height:1.2;">カロンではない<br>（カロンだが攻撃しない）</div>
-                    <div class="radio-btn" id="role_yes" onclick="selectAtkRole(true)" style="display:flex; align-items:center; justify-content:center; padding:2px;">カロンの攻撃</div>
+                    <div class="radio-btn selected" id="role_no" onclick="selectAtkRole(false)" style="font-size:9px; display:flex; align-items:center; justify-content:center; padding:2px; line-height:1.2;">ゴーストではない<br>（ゴーストだが攻撃しない）</div>
+                    <div class="radio-btn" id="role_yes" onclick="selectAtkRole(true)" style="display:flex; align-items:center; justify-content:center; padding:2px;">ゴーストの攻撃</div>
                 </div>
             </div>
 
             <div class="form-group" id="atk_target_group" style="display: none;">
-                <span class="form-label">攻撃対象<br><span style="font-size:8px; font-weight:normal;">※談話室を伏せたときのみ攻撃可能です</span></span>
+                <span class="form-label">攻撃対象<br><span style="font-size:8px; font-weight:normal;">※ラウンジを伏せたときのみ攻撃可能です</span></span>
                 <select id="atk_target" class="form-select"></select>
+            </div>
+
+            <p class="role-note" id="atk_no_attack_note" style="display:none;">この日の行先がラウンジではないため、攻撃できません。<br>そのまま「決定する」を押してください。</p>
+
+            <div class="form-group" id="atk_lib_group" style="display: none;">
+                <span class="form-label">占い部屋の調査対象<br><span style="font-size:8px; font-weight:normal;">※占い部屋が成功した場合のみ、相手の役職が分かります（あなただけに表示）</span></span>
+                <select id="atk_lib_target" class="form-select"></select>
             </div>
 
             <button class="modal-btn" onclick="submitAttack()">決定する</button>
@@ -803,7 +810,7 @@
         let p_players = 5; let p_turns = 4; let p_need = 2;
         let currentDay = 1; let currentPhase = 1;
 
-        let tempInput = { type: 'alive', dest: '操舵', card: 'C' };
+        let tempInput = { type: 'alive', dest: '運転', card: 'C' };
         let isCharon = false; 
         let isVoting = false; // 追放投票で「投票する」を選んでいるか
 
@@ -815,18 +822,18 @@
 
         // ===== 役職情報（陣営・説明・制約）=====
         const ROLE_INFO = {
-            '航海士': { faction:'人間', color:'var(--souda)', short:'人間陣営', act:'<b>操舵室＋〇</b>のみ（談話・図書に行けない）',
+            '航海士': { faction:'人間', color:'var(--souda)', short:'人間陣営', act:'<b>運転室＋〇</b>のみ（ラウンジ・占いに行けない）',
                 desc:'人間陣営の要。航海士同士はお互いの正体を知っています。',
-                rules:['毎ターン必ず「操舵室」へ行き、必ず「〇」を出します（談話室・図書室には行けません）。','カロンに最も狙われる立場。カミングアウトは終盤の切り札に。'] },
+                rules:['毎ターン必ず「運転室」へ行き、必ず「〇」を出します（ラウンジ・占い部屋には行けません）。','ゴーストに最も狙われる立場。カミングアウトは終盤の切り札に。'] },
             '乗客': { faction:'人間', color:'var(--tosho)', short:'人間陣営', act:'行先は自由／<b>〇のみ</b>（×不可）',
                 desc:'特殊能力を持たない多数派の人間。',
-                rules:['必ず「〇」を出します（×は出せません）。','行先は自由（操舵室/談話室/図書室）。議論を主導し操舵室の人数を調整しましょう。'] },
-            'ハデス': { faction:'カロン', color:'var(--bourei)', short:'カロン陣営', act:'行先は自由／<b>〇のみ</b>（×・攻撃なし）',
-                desc:'冥界の王。人間陣営とカロン陣営の両方を正確に知る唯一の役職。',
-                rules:['カロン陣営の勝利を目指します。','必ず「〇」を出します（×は出せません）。操舵室は人間を利するので図書室が推奨。','カロンの正体を一方的に知っています（カロンからは分かりません）。'] },
-            'カロン': { faction:'カロン', color:'var(--danwa)', short:'カロン陣営', act:'行先も〇×も自由／<b>攻撃可</b>（談話を出した日）',
+                rules:['必ず「〇」を出します（×は出せません）。','行先は自由（運転室/ラウンジ/占い部屋）。議論を主導し運転室の人数を調整しましょう。'] },
+            '狂人': { faction:'ゴースト', color:'var(--bourei)', short:'ゴースト陣営', act:'行先は自由／<b>〇のみ</b>（×・攻撃なし）',
+                desc:'冥界の王。人間陣営とゴースト陣営の両方を正確に知る唯一の役職。',
+                rules:['ゴースト陣営の勝利を目指します。','必ず「〇」を出します（×は出せません）。運転室は人間を利するので占い部屋が推奨。','ゴーストの正体を一方的に知っています（ゴーストからは分かりません）。'] },
+            'ゴースト': { faction:'ゴースト', color:'var(--danwa)', short:'ゴースト陣営', act:'行先も〇×も自由／<b>攻撃可</b>（ラウンジを出した日）',
                 desc:'冥府の渡し守。攻撃と妨害(×)で人間陣営を脱落させる最恐の存在。',
-                rules:['行先も〇×も自由。カロン同士はお互いを知っています。','「攻撃」は自分が談話室を伏せた日のみ可能。対象が操舵/図書なら撃破、談話なら返り討ちで自滅。','操舵室で×を出し×ポイントを稼ぎます。'] },
+                rules:['行先も〇×も自由。ゴースト同士はお互いを知っています。','「攻撃」は自分がラウンジを伏せた日のみ可能。対象が運転/占いなら撃破、ラウンジなら返り討ちで自滅。','運転室で×を出し×ポイントを稼ぎます。'] },
         };
         function factionOf(role){ return ROLE_INFO[role] ? ROLE_INFO[role].faction : null; }
 
@@ -844,12 +851,39 @@
             if(gData) updateUI();
         }
         function myRole(){ return (mySeat && gData && gData.roles) ? gData.roles[mySeat] : null; }
+        // ===== 役職ごとの仲間/対象の可視化（自分の役職に応じてのみ開示） =====
+        // 狂人 → ゴーストが分かる（一方向：ゴーストから狂人は分からない）
+        // ゴースト → 自分以外のゴースト仲間が分かる（狂人は含めない）
+        // 航海士 → 自分以外の航海士仲間が分かる
+        function roleRevealInfo(r){
+            if(!r || !gData?.roles) return null;
+            const roles = gData.roles, names = gData.names || {}, dead = gData.dead || {};
+            const nameOf = s => names[s] || s.toUpperCase();
+            const collect = pred => {
+                const list = [];
+                for(let i=1;i<=p_players;i++){ const s = `p${i}`; if(pred(s)) list.push({ name: nameOf(s), dead: !!dead[s] }); }
+                return list;
+            };
+            if(r === '狂人'){
+                return { label:'あなたが知る【ゴースト】', empty:'ゴーストはいません。', color:ROLE_INFO['ゴースト'].color,
+                         list: collect(s => roles[s] === 'ゴースト') };
+            }
+            if(r === 'ゴースト'){
+                return { label:'あなたの仲間【ゴースト】', empty:'他のゴーストはいません（あなた1人）。', color:ROLE_INFO['ゴースト'].color,
+                         list: collect(s => s !== mySeat && roles[s] === 'ゴースト') };
+            }
+            if(r === '航海士'){
+                return { label:'あなたの仲間【航海士】', empty:'他の航海士はいません（あなた1人）。', color:ROLE_INFO['航海士'].color,
+                         list: collect(s => s !== mySeat && roles[s] === '航海士') };
+            }
+            return null; // 乗客などには追加開示しない
+        }
         function ghostOn(){ // 亡霊ありか（未設定時は7人以上で既定ON）
             let g = gData?.settings?.ghostEnabled;
             if(g === undefined || g === null) return p_players >= 7;
             return !!g;
         }
-        function libraryOn(){ // 図書室ありか（未設定時は既定ON）
+        function libraryOn(){ // 占い部屋ありか（未設定時は既定ON）
             let l = gData?.settings?.libraryEnabled;
             if(l === undefined || l === null) return true;
             return !!l;
@@ -897,7 +931,7 @@
             if(!gameRef) return;
             gameRef.update({ 'settings/ghostEnabled': !ghostOn() });
         }
-        // 図書室の有無トグル
+        // 占い部屋の有無トグル
         function toggleLibrary(){
             if(!gameRef) return;
             gameRef.update({ 'settings/libraryEnabled': !libraryOn() });
@@ -921,11 +955,25 @@
                     <div style="display:inline-block;font-size:12px;font-weight:700;background:var(--pt-bg);border:1px solid var(--border);border-radius:999px;padding:5px 12px;margin-bottom:10px;line-height:1.4;">できること：${info.act||''}</div>
                     <div style="font-size:12px;text-align:left;line-height:1.5;margin-bottom:8px;">${info.desc||''}</div>
                     <ul style="font-size:11px;text-align:left;line-height:1.5;padding-left:18px;margin:0;">${rulesHtml}</ul>`;
+
+                // 役職に応じた仲間/対象の開示（狂人→ゴースト、ゴースト→ゴースト仲間）
+                const reveal = roleRevealInfo(r);
+                if(reveal){
+                    const items = reveal.list.length
+                        ? reveal.list.map(x => `<span style="display:inline-block;font-size:13px;font-weight:800;color:${reveal.color};background:var(--pt-bg);border:1px solid var(--border);border-radius:999px;padding:4px 12px;margin:3px;">${x.name}${x.dead?' <span style="font-weight:600;color:var(--text-sub);">(脱落)</span>':''}</span>`).join('')
+                        : `<div style="font-size:12px;color:var(--text-sub);">${reveal.empty}</div>`;
+                    box.innerHTML += `
+                        <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);">
+                            <div style="font-size:12px;font-weight:800;color:${reveal.color};margin-bottom:6px;">${reveal.label}</div>
+                            <div style="text-align:center;">${items}</div>
+                            <div style="font-size:10px;color:var(--text-sub);margin-top:6px;line-height:1.4;">※この情報はあなた（${r}）だけに表示されています。他人には見えません。</div>
+                        </div>`;
+                }
             }
             // 全役職リファレンス（誰が何かは出さない）。各役職の取れるアクションを超簡潔に
             const all = document.getElementById('allRoles_box');
             if(all){
-                let html = ['航海士','乗客','ハデス','カロン'].map(name=>{
+                let html = ['航海士','乗客','狂人','ゴースト'].map(name=>{
                     const i = ROLE_INFO[name];
                     return `<div class="role-ref-item">
                         <span class="role-ref-name" style="color:${i.color}">${name}</span>
@@ -936,7 +984,7 @@
                 html += `<div class="role-ref-item">
                         <span class="role-ref-name" style="color:var(--bourei)">亡霊</span>
                         <span class="role-ref-faction">脱落後の状態</span>
-                        <div class="role-ref-act">毎日<b>1人の行先を談話に上書き</b>（投票・攻撃は不可）</div>
+                        <div class="role-ref-act">毎日<b>1人の行先をラウンジに上書き</b>（投票・攻撃は不可）</div>
                     </div>`;
                 all.innerHTML = html;
             }
@@ -1080,14 +1128,14 @@
                         let inputs = gData.inputs?.[`d${currentDay}`] || {};
                         let need = activeInputCount();
                         if (need > 0 && Object.keys(inputs).length >= need) {
-                            setPhase(2);   // 朝の議論 → カロン密談
+                            setPhase(2);   // 朝の議論 → ゴースト密談
                             return;
                         }
                     } else if (currentPhase === 2) {
                         let attacks = gData.attacks?.[`d${currentDay}`] || {};
                         let need = livingCount();
                         if (need > 0 && Object.keys(attacks).length >= need) {
-                            setPhase(3);   // カロン密談 → 昼の行動（結果公開）
+                            setPhase(3);   // ゴースト密談 → 昼の行動（結果公開）
                             return;
                         }
                     }
@@ -1144,7 +1192,7 @@
             document.getElementById('btn_ph2_label').innerHTML = `攻撃入力<br>(${attacksCount}/${living})`;
             document.getElementById('btn_ph4_label').innerHTML = `追放投票<br>(${votesCount}/${living})`;
 
-            // 亡霊・図書室トグルの表示（on/off の見た目も切替）
+            // 亡霊・占い部屋トグルの表示（on/off の見た目も切替）
             const gBtn = document.getElementById('ghostToggle');
             if(gBtn){ gBtn.innerText = ghostOn() ? 'あり' : 'なし'; gBtn.classList.toggle('on', ghostOn()); }
             const lBtn = document.getElementById('libraryToggle');
@@ -1387,8 +1435,8 @@
             let roles = [];
             for(let i=0; i<s; i++) roles.push("航海士");
             for(let i=0; i<p; i++) roles.push("乗客");
-            for(let i=0; i<c; i++) roles.push("カロン");
-            for(let i=0; i<h; i++) roles.push("ハデス");
+            for(let i=0; i<c; i++) roles.push("ゴースト");
+            for(let i=0; i<h; i++) roles.push("狂人");
             
             for(let i = roles.length - 1; i > 0; i--) {
                 let j = Math.floor(Math.random() * (i + 1));
@@ -1421,26 +1469,59 @@
             const r = myRole();
             let msg = '';
             if(r === '航海士'){
-                selectRadio('dest','操舵'); selectRadio('card','C');
+                selectRadio('dest','運転'); selectRadio('card','C');
                 setRadioLocked(destIds, true); setRadioLocked(cardIds, true);
-                msg = '航海士：行先「操舵室」・カード「〇」で固定です。';
-            } else if(r === '乗客' || r === 'ハデス'){
+                msg = '航海士：行先「運転室」・カード「〇」で固定です。';
+            } else if(r === '乗客' || r === '狂人'){
                 selectRadio('card','C'); setRadioLocked(cardIds, true);
-                msg = (r==='ハデス'?'ハデス':'乗客') + '：カードは「〇」固定（×は出せません）。行先は自由。' + (r==='ハデス'?'操舵室は人間を利するため図書室が推奨。':'');
-            } else if(r === 'カロン'){
-                msg = 'カロン：行先・〇×ともに自由です。';
+                msg = (r==='狂人'?'狂人':'乗客') + '：カードは「〇」固定（×は出せません）。行先は自由。' + (r==='狂人'?'運転室は人間を利するため占い部屋が推奨。':'');
+            } else if(r === 'ゴースト'){
+                msg = 'ゴースト：行先・〇×ともに自由です。';
             }
             if(note) note.innerText = msg;
         }
-        // 図書室オフなら行先「図書室」を隠す（選択中だった場合は操舵へ）
+        // その座席が（当日を除く）過去に占い部屋を使ったか＝占い部屋は各自ゲーム中1回まで
+        function libraryUsedBySeat(seat){
+            if(!seat || !gData?.inputs) return false;
+            for(const dk in gData.inputs){
+                if(dk === `d${currentDay}`) continue;          // 当日は編集可なので除外
+                const d = gData.inputs[dk]?.[seat];
+                if(d && d.type === 'alive' && d.dest === '占い') return true;
+            }
+            return false;
+        }
+        // その座席が「dayNum より前の日」に亡霊から上書きされたことがあるか
+        // （一度上書きされた人は、次の日以降は上書き禁止）
+        function ghostOverwrittenBeforeDay(seat, dayNum){
+            if(!seat || !gData?.inputs) return false;
+            for(const dk in gData.inputs){
+                const n = parseInt(dk.slice(1));            // 'd3' -> 3
+                if(!(n < dayNum)) continue;                 // 過去の日だけを見る
+                const dayInputs = gData.inputs[dk] || {};
+                for(const s in dayInputs){
+                    const e = dayInputs[s];
+                    if(e && e.type === 'ghost' && e.target === seat) return true;
+                }
+            }
+            return false;
+        }
+        // 当日の入力時点で、その座席がすでに過去日で上書き済みか
+        function ghostOverwrittenBefore(seat){ return ghostOverwrittenBeforeDay(seat, currentDay); }
+        // 占い部屋オフ／使用済みなら行先「占い部屋」を隠す（選択中だった場合は運転へ）
         function applyLibraryVisibility(){
             const tosho = document.getElementById('dest_tosho');
             if(!tosho) return;
-            if(libraryOn()){
+            const usedUp = libraryUsedBySeat(mySeat);
+            if(libraryOn() && !usedUp){
                 tosho.style.display = '';
             } else {
                 tosho.style.display = 'none';
-                if(tempInput.dest === '図書') selectRadio('dest', '操舵');
+                if(tempInput.dest === '占い') selectRadio('dest', '運転');
+            }
+            // 使用済みで隠した場合は理由を注記
+            const note = document.getElementById('in_role_note');
+            if(note && libraryOn() && usedUp){
+                note.innerText = (note.innerText ? note.innerText + '\n' : '') + '占い部屋は1ゲーム1回までです（使用済みのため選べません）。';
             }
         }
 
@@ -1459,9 +1540,9 @@
         // 行先入力
         function openInputModal() {
             setPhase(1);
-            tempInput = { type: 'alive', dest: '操舵', card: 'C' };
+            tempInput = { type: 'alive', dest: '運転', card: 'C' };
             toggleInputType('alive');
-            selectRadio('dest', '操舵');
+            selectRadio('dest', '運転');
             selectRadio('card', 'C');
 
             populateSelect('in_name');
@@ -1471,6 +1552,8 @@
             ghostSel.innerHTML = '';
             ghostSel.add(new Option("誰も妨害しない", "none"));
             for(let i=1; i<=p_players; i++) {
+                // 一度上書きされたことがある人は、次の日以降は上書き対象に選べない
+                if(ghostOverwrittenBefore(`p${i}`)) continue;
                 let name = gData?.names?.[`p${i}`] || `P${i}`;
                 ghostSel.add(new Option(name, `p${i}`));
             }
@@ -1478,7 +1561,7 @@
             applyInputModeForSeat();                       // 生存/亡霊を自動決定
             if(tempInput.type === 'alive'){
                 applyRoleLockToInput();                    // 役職で行先/〇×をロック
-                applyLibraryVisibility();                  // 図書室オフなら「図書」を隠す
+                applyLibraryVisibility();                  // 占い部屋オフなら「占い」を隠す
             }
 
             document.getElementById('inputModal').style.display = 'flex';
@@ -1493,9 +1576,9 @@
         function selectRadio(key, val) {
             tempInput[key] = val;
             if(key === 'dest') {
-                document.getElementById('dest_souda').classList.toggle('selected', val === '操舵');
-                document.getElementById('dest_danwa').classList.toggle('selected', val === '談話');
-                document.getElementById('dest_tosho').classList.toggle('selected', val === '図書');
+                document.getElementById('dest_souda').classList.toggle('selected', val === '運転');
+                document.getElementById('dest_danwa').classList.toggle('selected', val === 'ラウンジ');
+                document.getElementById('dest_tosho').classList.toggle('selected', val === '占い');
             } else {
                 document.getElementById('card_c').classList.toggle('selected', val === 'C');
                 document.getElementById('card_x').classList.toggle('selected', val === 'X');
@@ -1511,9 +1594,13 @@
             // 役職制約の最終強制（誤操作対策）
             const r0 = (mySeat && gData?.roles) ? gData.roles[mySeat] : null;
             if(tempInput.type === 'alive'){
-                if(r0 === '航海士'){ tempInput.dest = '操舵'; tempInput.card = 'C'; }
-                else if(r0 === '乗客' || r0 === 'ハデス'){ tempInput.card = 'C'; }
-                if(!libraryOn() && tempInput.dest === '図書') tempInput.dest = '操舵'; // 図書室オフ
+                if(r0 === '航海士'){ tempInput.dest = '運転'; tempInput.card = 'C'; }
+                else if(r0 === '乗客' || r0 === '狂人'){ tempInput.card = 'C'; }
+                if(!libraryOn() && tempInput.dest === '占い') tempInput.dest = '運転'; // 占い部屋オフ
+                if(tempInput.dest === '占い' && libraryUsedBySeat(mySeat)){           // 占い部屋は各自1回まで
+                    uiAlert('占い部屋は1ゲーム1回までです。すでに使用済みのため、行先を変更してください。', '入力エラー');
+                    return;
+                }
             }
 
             let data = { type: tempInput.type, time: Date.now() };
@@ -1521,6 +1608,11 @@
                 data.dest = tempInput.dest; data.card = tempInput.card;
             } else {
                 let tgt = document.getElementById('in_ghost_target').value;
+                if(tgt !== "none" && ghostOverwrittenBefore(tgt)){   // 一度上書きされた人は再上書き禁止
+                    const tnm = gData?.names?.[tgt] || tgt;
+                    uiAlert(`${tnm} は既に上書きされたことがあるため、これ以上は上書きできません。別の相手を選ぶか「誰も妨害しない」にしてください。`, '入力エラー');
+                    return;
+                }
                 data.target = tgt === "none" ? "" : tgt;
             }
             gameRef.child(`inputs/d${currentDay}/${myName}`).set(data);
@@ -1534,18 +1626,20 @@
             populateSelect('atk_name');
             applySeatToModal('atk_name');
 
-            // 役職が分かっていればカロン判定を自動化し、手動トグルを隠す
+            // 役職が分かっていればゴースト判定を自動化し、手動トグルを隠す
             const r = myRole();
             const roleGroup = document.getElementById('atk_role_group');
             const autoNote = document.getElementById('atk_role_auto_note');
             if(mySeat && r){
-                selectAtkRole(r === 'カロン');
+                selectAtkRole(r === 'ゴースト');
                 if(roleGroup) roleGroup.style.display = 'none';
                 if(autoNote){
                     autoNote.style.display = 'block';
-                    autoNote.innerText = (r === 'カロン')
-                        ? 'あなたはカロンです。攻撃する場合のみ対象を選んでください（談話室を伏せた日のみ攻撃可）。'
-                        : 'あなたはカロンではありません。そのまま「決定する」を押してください。';
+                    autoNote.innerText = (r === 'ゴースト')
+                        ? (charonCanAttackToday()
+                            ? 'あなたはゴーストです。攻撃する場合のみ対象を選んでください（ラウンジを伏せた日のみ攻撃可）。'
+                            : 'あなたはゴーストですが、この日の行先がラウンジではないため攻撃できません。')
+                        : 'あなたはゴーストではありません。そのまま「決定する」を押してください。';
                 }
             } else {
                 if(roleGroup) roleGroup.style.display = '';
@@ -1560,13 +1654,55 @@
                 atkSel.add(new Option(name, `p${i}`));
             }
 
+            // 占い部屋に行った人は、同じタイミングで「調査対象」を選べる
+            const seat = actingAtkSeat();
+            const libGroup = document.getElementById('atk_lib_group');
+            const libSel = document.getElementById('atk_lib_target');
+            if(libSel){
+                libSel.innerHTML = '';
+                libSel.add(new Option("調べない", "none"));
+                for(let i=1; i<=p_players; i++) {
+                    if(`p${i}` === seat) continue;   // 自分は調査対象に含めない
+                    let name = gData?.names?.[`p${i}`] || `P${i}`;
+                    libSel.add(new Option(name, `p${i}`));
+                }
+                const prev = gData?.attacks?.[`d${currentDay}`]?.[seat]?.libTarget;
+                if(prev) libSel.value = prev;
+            }
+            if(libGroup) libGroup.style.display = seatWentLibraryToday(seat) ? 'block' : 'none';
+
             document.getElementById('attackModal').style.display = 'flex';
+        }
+        // その座席がこの日に占い部屋へ行ったか
+        function seatWentLibraryToday(seat){
+            const inp = seat ? gData?.inputs?.[`d${currentDay}`]?.[seat] : null;
+            return !!(inp && inp.type === 'alive' && inp.dest === '占い');
+        }
+        // 攻撃モーダルで「いま操作している座席」（座席確定済みなら mySeat、未確定なら名前選択）
+        function actingAtkSeat(){
+            const v = document.getElementById('atk_name')?.value;
+            return v || mySeat || null;
+        }
+        // ゴーストが「この日」攻撃できるか＝自分の行先がラウンジの日のみ可能
+        function charonCanAttackToday(){
+            const seat = actingAtkSeat();
+            const inp = seat ? gData?.inputs?.[`d${currentDay}`]?.[seat] : null;
+            return !!(inp && inp.type === 'alive' && inp.dest === 'ラウンジ');
         }
         function selectAtkRole(isCharonFlag) {
             isCharon = isCharonFlag;
             document.getElementById('role_no').classList.toggle('selected', !isCharonFlag);
             document.getElementById('role_yes').classList.toggle('selected', isCharonFlag);
-            document.getElementById('atk_target_group').style.display = isCharonFlag ? 'block' : 'none';
+            // ゴーストでも、行先がラウンジ以外の日は攻撃対象を選べない
+            const canAttack = charonCanAttackToday();
+            document.getElementById('atk_target_group').style.display = (isCharonFlag && canAttack) ? 'block' : 'none';
+            const noteEl = document.getElementById('atk_no_attack_note');
+            if(noteEl) noteEl.style.display = (isCharonFlag && !canAttack) ? 'block' : 'none';
+            // 選べない状態のときは攻撃対象を「誰も攻撃しない」に強制リセット
+            if(isCharonFlag && !canAttack){
+                const sel = document.getElementById('atk_target');
+                if(sel) sel.value = 'none';
+            }
         }
         function submitAttack() {
             const myName = document.getElementById('atk_name').value;
@@ -1580,15 +1716,19 @@
 
             if (isCharon && target !== "") {
                 let myInput = gData?.inputs?.[`d${currentDay}`]?.[myName];
-                if (myInput && myInput.type === 'alive') {
-                    if (myInput.dest === '操舵' || myInput.dest === '図書') {
-                        uiAlert(`この日の行先に談話室を選んでいたときのみ攻撃可能です。攻撃対象を「誰も攻撃しない」にしてください`, '攻撃の確認');
-                        return;
-                    }
+                const canAttack = !!(myInput && myInput.type === 'alive' && myInput.dest === 'ラウンジ');
+                if (!canAttack) {
+                    uiAlert(`この日の行先にラウンジを選んでいたときのみ攻撃可能です。攻撃対象を「誰も攻撃しない」にしてください`, '攻撃の確認');
+                    return;
                 }
             }
 
             let data = { isCharon: isCharon, target: target };
+            // 占い部屋に行った人の調査対象を保存（成功時のみ後で役職を開示）
+            if(seatWentLibraryToday(myName)){
+                let lt = document.getElementById('atk_lib_target').value;
+                if(lt && lt !== 'none') data.libTarget = lt;
+            }
             gameRef.child(`attacks/d${currentDay}/${myName}`).set(data);
             closeModal('attackModal');
         }
@@ -1672,6 +1812,7 @@
                         <div class="name-center">
                             <input type="text" id="name_${p}" class="name-input" onchange="saveName(${p})">
                         </div>
+                        <div class="role-reveal" id="role_reveal_${p}" style="display:none; font-size:10px; font-weight:900; line-height:1.2; margin-top:1px;"></div>
                         <div class="vote-info-row">
                             <div class="vote-count-left" id="vote_count_${p}"></div>
                             <div class="vote-target-right" id="vote_target_${p}"></div>
@@ -1725,6 +1866,22 @@
                 // 脱落者の見た目（取り消し線）
                 const nameTh = nameInput.closest('th');
                 if(nameTh) nameTh.classList.toggle('player-dead', !!(gData?.dead && gData.dead[pKey]));
+
+                // 勝敗が決まったら、結果表示として各プレイヤーの役職をセルに開示
+                const roleRevealDiv = document.getElementById(`role_reveal_${p}`);
+                if(roleRevealDiv){
+                    const winner = gData?.game?.winner;
+                    const role = gData?.roles?.[pKey];
+                    if(winner && role){
+                        const info = ROLE_INFO[role] || {};
+                        const win = info.faction === winner;   // 勝利陣営に印
+                        roleRevealDiv.style.display = '';
+                        roleRevealDiv.innerHTML = `<span style="color:${info.color||'inherit'}">${role}</span>` + (win ? ' <span title="勝利陣営">🏆</span>' : '');
+                    } else {
+                        roleRevealDiv.style.display = 'none';
+                        roleRevealDiv.innerHTML = '';
+                    }
+                }
 
                 if(voteCountDiv) {
                     let vCount = voteCounts[pKey] || 0;
@@ -1827,7 +1984,7 @@
                         
                         let d = inputs[`p${p}`];
                         if(!d) {
-                            d = { type: 'alive', dest: '談話', card: 'C', time: null }; 
+                            d = { type: 'alive', dest: 'ラウンジ', card: 'C', time: null }; 
                         }
                         
                         let initialDest = '';
@@ -1857,8 +2014,9 @@
 
                     for (let p = 1; p <= p_players; p++) {
                         let d = pData[`p${p}`];
-                        if(d.type === 'ghost' && d.target && pData[d.target]) {
-                            pData[d.target].finalDest = '談話(上書き)';
+                        // 一度上書きされた人は、その日(t)より後の日では上書きされない
+                        if(d.type === 'ghost' && d.target && pData[d.target] && !ghostOverwrittenBeforeDay(d.target, t)) {
+                            pData[d.target].finalDest = 'ラウンジ(上書き)';
                         }
                     }
 
@@ -1867,15 +2025,31 @@
                             let target = attacks[karon].target;
                             if(target && pData[target]) {
                                 let tDest = pData[target].finalDest;
-                                if(tDest.includes('談話')) {
+                                if(tDest.includes('ラウンジ')) {
                                     if(pData[karon]) pData[karon].status = '💀攻撃を失敗'; 
                                     pData[target].status = '攻撃された';
-                                } else if(tDest === '操舵' || tDest === '図書') {
-                                    pData[target].status = '💀攻撃された'; 
+                                } else if(tDest === '運転' || tDest === '占い') {
+                                    pData[target].status = '💀攻撃された';
                                 }
                             }
                         }
                     });
+
+                    // 占い部屋の成否（表示のみ・攻撃解決後に判定）：
+                    // 2人以上で行った／ゴーストに撃破された人がいた → 失敗、1人で無事 → 成功
+                    let libGoers = 0, libKilled = false;
+                    for (let p = 1; p <= p_players; p++) {
+                        let d = pData[`p${p}`];
+                        if(d.type === 'alive' && d.finalDest === '占い'){
+                            libGoers++;
+                            if(d.status.includes('💀')) libKilled = true;
+                        }
+                    }
+                    let libResult = (libGoers >= 2 || libKilled) ? '失敗' : (libGoers === 1 ? '成功' : '');
+                    for (let p = 1; p <= p_players; p++) {
+                        let d = pData[`p${p}`];
+                        if(d.type === 'alive' && d.finalDest === '占い') d.libNote = libResult;
+                    }
 
                     let validC_Count = 0; let validX_Count = 0;
                     
@@ -1891,14 +2065,25 @@
                             bgClass = 'state-dead';
                             killedSeats[`p${p}`] = true; // 撃破死を記録
                         } else {
-                            if(mainText.includes('操舵')) bgClass = 'state-souda';
-                            if(mainText.includes('談話')) bgClass = 'state-danwa';
-                            if(mainText.includes('図書')) bgClass = 'state-tosho';
+                            if(mainText.includes('運転')) bgClass = 'state-souda';
+                            if(mainText.includes('ラウンジ')) bgClass = 'state-danwa';
+                            if(mainText.includes('占い')) bgClass = 'state-tosho';
                             if(d.type === 'ghost') bgClass = 'state-bourei'; 
                         }
 
                         if(d.status) {
                             mainText = `${mainText} | ${d.status}`;
+                        }
+                        if(d.libNote) {
+                            mainText = `${mainText} | ${d.libNote}`;
+                        }
+                        // 占い部屋の調査結果：成功時のみ、本人の端末だけに相手の役職を開示
+                        if(d.type === 'alive' && d.finalDest === '占い' && `p${p}` === mySeat && libResult === '成功'){
+                            const lt = attacks[`p${p}`]?.libTarget;
+                            if(lt && gData?.roles?.[lt]){
+                                const tnm = gData?.names?.[lt] || lt;
+                                mainText = `${mainText} | 調査:${tnm}=${gData.roles[lt]}`;
+                            }
                         }
 
                         let extra = '';
@@ -1912,7 +2097,7 @@
                             ${extra}
                         </div>`;
 
-                        if(d.finalDest === '操舵' && !d.status.includes('💀')) {
+                        if(d.finalDest === '運転' && !d.status.includes('💀')) {
                             if(d.card === 'X') validX_Count++;
                             else validC_Count++;
                         }
@@ -1920,20 +2105,18 @@
 
                     let sumSouda = validC_Count + validX_Count;
                     let rC = 0; let rX = 0;
-                    
-                    if(sumSouda > 0) {
-                        if(sumSouda < p_need) {
-                            rX = 1;
-                        } else {
-                            if(validX_Count > 0) {
-                                rX = validX_Count;
-                            } else {
-                                rC = validC_Count;
-                            }
-                        }
+
+                    // 運転室に行った人数が必要数に満たない場合（0人を含む）は、
+                    // ✕の数が幾つであっても ✕＋1 とする
+                    if(sumSouda < p_need) {
+                        rX = 1;
+                    } else if(validX_Count > 0) {
+                        rX = validX_Count;
+                    } else {
+                        rC = validC_Count;
                     }
 
-                    if (sumSouda > 0 && sumSouda < p_need) {
+                    if (sumSouda < p_need) {
                         countRatioEl.innerHTML = `<span class="val-col" style="font-size:10px; font-weight:bold;">人数不足</span>`;
                     } else {
                         countRatioEl.innerHTML = `<span class="val-c">${validC_Count}</span><span class="val-col">:</span><span class="val-x">${validX_Count}</span>`;
@@ -2037,19 +2220,19 @@
             let livingCount = 0, charonAlive = 0, charonFacAlive = 0, charonTotal = 0;
             for(let i=1;i<=p_players;i++){
                 const s = `p${i}`, r = roles[s];
-                if(r === 'カロン') charonTotal++;
+                if(r === 'ゴースト') charonTotal++;
                 if(!dead[s]){
                     livingCount++;
-                    if(r === 'カロン') charonAlive++;
-                    if(factionOf(r) === 'カロン') charonFacAlive++;
+                    if(r === 'ゴースト') charonAlive++;
+                    if(factionOf(r) === 'ゴースト') charonFacAlive++;
                 }
             }
             const targetC = parseInt(selC.value) || 12, targetX = parseInt(selX.value) || 5;
             let w = null;
-            if(charonTotal > 0 && charonAlive === 0) w = '人間';                    // カロン全滅
-            else if(livingCount > 0 && charonFacAlive * 2 >= livingCount) w = 'カロン'; // 生存者の過半数がカロン陣営
+            if(charonTotal > 0 && charonAlive === 0) w = '人間';                    // ゴースト全滅
+            else if(livingCount > 0 && charonFacAlive * 2 >= livingCount) w = 'ゴースト'; // 生存者の過半数がゴースト陣営
             else if(gTotC >= targetC) w = '人間';                                    // 〇ポイント到達
-            else if(gTotX >= targetX) w = 'カロン';                                  // ×ポイント到達
+            else if(gTotX >= targetX) w = 'ゴースト';                                  // ×ポイント到達
             if(w) gameRef.update({ 'game/winner': w });
         }
 
@@ -2079,7 +2262,7 @@
                     parts.push(`<button class="status-btn" onclick="applyExile()">${nameOf(res.exile)} を追放する</button>`);
                 }
             } else {
-                const hints = { 1:'朝：各自「行先入力」', 2:'カロン密談：各自「攻撃入力」', 2.5:'昼：「結果公開」へ', 3:'昼の結果公開。次は夜の追放へ' };
+                const hints = { 1:'朝：各自「行先入力」', 2:'ゴースト密談：各自「攻撃入力」', 2.5:'昼：「結果公開」へ', 3:'昼の結果公開。次は夜の追放へ' };
                 if(hints[currentPhase]) parts.push(`<span class="status-msg">${hints[currentPhase]}</span>`);
             }
             if(parts.length){ bar.innerHTML = parts.join(''); bar.style.display = 'flex'; }
@@ -2098,11 +2281,32 @@
                 btn.style.opacity = disabled ? '0.4' : '';
                 btn.style.pointerEvents = disabled ? 'none' : '';
             };
-            // 行先(ph1)・攻撃(ph2)・投票(ph4)
-            if(winner){ set('btn_ph1_label', true); set('btn_ph2_label', true); set('btn_ph4_label', true); return; }
-            if(!dead){ set('btn_ph1_label', false); set('btn_ph2_label', false); set('btn_ph4_label', false); }
-            else if(ghost){ set('btn_ph1_label', false); set('btn_ph2_label', true); set('btn_ph4_label', true); } // 亡霊は上書きのみ
-            else { set('btn_ph1_label', true); set('btn_ph2_label', true); set('btn_ph4_label', true); }            // 観戦
+            // 前段の手順が「全員完了」するまで次の行動ボタンは押せない
+            const inputs = gData?.inputs?.[`d${currentDay}`] || {};
+            const attacks = gData?.attacks?.[`d${currentDay}`] || {};
+            const need1 = activeInputCount();           // 行先入力が必要な人数
+            const need2 = livingCount();                // 攻撃入力が必要な人数（生存者）
+            const ph1Done = need1 > 0 && Object.keys(inputs).length >= need1;   // 全員が行先入力済み
+            const ph2Done = need2 > 0 && Object.keys(attacks).length >= need2;  // 全員が攻撃入力済み
+            const ph3Done = currentPhase >= 3;                                  // 結果公開済み
+
+            // 決着後は行動ボタンは不可。ただし「結果公開」だけは最終結果を表示するため押せるようにする
+            if(winner){ set('btn_ph1_label', true); set('btn_ph2_label', true); set('btn_ph3_label', false); set('btn_ph4_label', true); return; }
+
+            // 自分の状態による可否（観戦＝死亡かつ亡霊なし は全不可、亡霊は行先上書きのみ）
+            let canPh1, canPh2, canPh4;
+            if(!dead){ canPh1 = true;  canPh2 = true;  canPh4 = true;  }
+            else if(ghost){ canPh1 = true;  canPh2 = false; canPh4 = false; }
+            else { canPh1 = false; canPh2 = false; canPh4 = false; }
+
+            // 行先(ph1)＝最初の手順、前段なし
+            set('btn_ph1_label', !canPh1);
+            // 攻撃(ph2)＝全員の行先入力が完了してから
+            set('btn_ph2_label', !canPh2 || !ph1Done);
+            // 結果公開(ph3, GM操作)＝全員の攻撃入力が完了してから（生死は問わない）
+            set('btn_ph3_label', !ph2Done);
+            // 追放投票(ph4)＝結果公開が済んでから
+            set('btn_ph4_label', !canPh4 || !ph3Done);
         }
 
         async function resetSingleDay() {
