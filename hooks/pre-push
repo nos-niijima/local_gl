@@ -1,0 +1,22 @@
+#!/bin/sh
+# pre-push: main を push する瞬間に rename_ghost(名称変更版) を同期 push する。
+#   - main から rename_ghost を再生成 → rename適用 → origin/rename_ghost を更新。
+#   - 再帰防止: 派生ブランチ push 時(GL_SYNC_RENAME)や main 以外の push では何もしない。
+#
+# インストール: scripts/install-hooks.sh （.git/hooks/pre-push へコピー）
+
+[ -n "$GL_SYNC_RENAME" ] && exit 0   # 同期処理が起こした内側 push では発火させない
+
+push_main=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$remote_ref" = "refs/heads/main" ] && push_main=1
+done
+[ "$push_main" = 1 ] || exit 0
+
+ROOT=$(git rev-parse --show-toplevel)
+echo "[pre-push] sync rename_ghost from main ..."
+if ! GL_SYNC_RENAME= sh "$ROOT/scripts/sync-rename-branch.sh"; then
+  echo "[pre-push] rename_ghost sync FAILED — push を中止します" >&2
+  exit 1
+fi
+exit 0
